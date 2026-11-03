@@ -1,0 +1,3214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DigiLab – Flip-Flop Virtual Electronics Lab</title>
+  <meta name="description" content="Realistic virtual digital electronics trainer kit and breadboard simulator for flip-flop experiments.">
+  <meta name="theme-color" content="#0f172a">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@600;800;900&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['"Fira Code"', 'monospace'],
+            tech: ['Orbitron', 'sans-serif'],
+          },
+          colors: {
+            pcb: {
+              DEFAULT: '#0a3a2a',
+              dark: '#052319',
+              light: '#11533c',
+              border: '#0d6346',
+              silk: '#f4f6e8',
+              pad: '#c8a452',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom PCB, LED, Switch, and Breadboard Aesthetics */
+    body {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: pan-x pan-y;
+      background-color: #0b0f19;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+
+    /* PCB Grid Texture */
+    .pcb-texture {
+      background-color: #0a3524;
+      background-image: 
+        radial-gradient(rgba(200, 164, 82, 0.15) 1px, transparent 1px),
+        linear-gradient(to right, rgba(13, 99, 70, 0.3) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(13, 99, 70, 0.3) 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* Terminal Styling */
+    .terminal-touch {
+      position: relative;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .terminal-touch::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: -10px;
+      right: -10px;
+      bottom: -10px;
+      z-index: 10;
+    }
+    .terminal-pin {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid #eab308;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.5);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .terminal-touch:hover .terminal-pin {
+      transform: scale(1.25);
+    }
+    .terminal-selected .terminal-pin {
+      transform: scale(1.35);
+      box-shadow: 0 0 12px #38bdf8, 0 0 4px #fff;
+      animation: pulse-ring 1s infinite alternate;
+    }
+
+    @keyframes pulse-ring {
+      from { box-shadow: 0 0 6px #38bdf8; }
+      to { box-shadow: 0 0 16px #38bdf8, 0 0 2px #fff; }
+    }
+
+    /* Realistic 3D Rocker Switch */
+    .rocker-switch {
+      width: 32px;
+      height: 60px;
+      background: #1e293b;
+      border-radius: 6px;
+      box-shadow: inset 0 3px 6px rgba(0,0,0,0.8), 0 2px 4px rgba(255,255,255,0.05);
+      position: relative;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3px;
+      transition: all 0.2s ease;
+    }
+    .rocker-lever {
+      width: 26px;
+      height: 28px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #64748b 0%, #334155 100%);
+      box-shadow: 0 3px 5px rgba(0,0,0,0.5);
+      transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .rocker-switch.active .rocker-lever {
+      transform: translateY(24px);
+      background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+    }
+
+    /* Realistic LED indicator */
+    .led-indicator {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #2a1515;
+      border: 1px solid #441111;
+      transition: all 0.15s ease;
+      box-shadow: inset 0 2px 3px rgba(0,0,0,0.7);
+    }
+    .led-indicator.active {
+      background: #ef4444;
+      border-color: #fca5a5;
+      box-shadow: 0 0 12px #ef4444, 0 0 4px #f87171, inset 0 -1px 3px #7f1d1d;
+    }
+    .led-indicator.green-led.active {
+      background: #22c55e;
+      border-color: #86efac;
+      box-shadow: 0 0 12px #22c55e, 0 0 4px #4ade80, inset 0 -1px 3px #14532d;
+    }
+
+    /* Realistic IC Chip on Breadboard */
+    .ic-package {
+      background: #18181b;
+      border: 1px solid #27272a;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+    .ic-notch {
+      width: 12px;
+      height: 6px;
+      background: #09090b;
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    /* Breadboard Pin Hole */
+    .bb-hole {
+      width: 12px;
+      height: 12px;
+      background: #111827;
+      border-radius: 2px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.9);
+      cursor: pointer;
+      position: relative;
+    }
+    .bb-hole:hover {
+      background: #374151;
+      box-shadow: 0 0 6px #38bdf8;
+    }
+    .bb-hole.active-hole {
+      background: #eab308;
+      box-shadow: 0 0 8px #fde047;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #26334d;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3b82f6;
+    }
+
+    /* Subtle wire sag animation */
+    .wire-path {
+      cursor: pointer;
+      transition: stroke-width 0.15s ease, filter 0.15s ease;
+    }
+    .wire-path:hover {
+      stroke-width: 6px !important;
+      filter: drop-shadow(0 0 5px rgba(255,255,255,0.7));
+    }
+    .wire-selected {
+      stroke-dasharray: 6 3;
+      animation: dash 1s linear infinite;
+    }
+    @keyframes dash {
+      to { stroke-dashoffset: -18; }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased text-slate-200">
+
+  <!-- Top Master App Bar -->
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-xl">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-emerald-600 via-teal-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-emerald-950/40 border border-emerald-400/30">
+          <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-tech text-xl font-bold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-teal-400 via-cyan-300 to-blue-400">DigiLab</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono font-medium">v2.5 PRO</span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">Flip-Flop Virtual Electronics Laboratory</p>
+        </div>
+      </div>
+
+      <!-- Main Master Power Switch & Global Controls -->
+      <div class="flex items-center space-x-3">
+        <!-- Power Switch -->
+        <div class="flex items-center space-x-2 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
+          <div id="masterPowerLed" class="led-indicator green-led active"></div>
+          <span class="text-xs font-mono font-bold tracking-wider text-slate-300">PWR</span>
+          <button id="masterPowerBtn" class="px-2.5 py-1 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-white shadow transition" title="Toggle Trainer Master 5V Power">
+            ON
+          </button>
+        </div>
+
+        <!-- Wire Color Selector -->
+        <div class="hidden md:flex items-center space-x-1.5 bg-slate-950 px-2.5 py-1.5 rounded-xl border border-slate-800">
+          <span class="text-[11px] font-mono text-slate-400 mr-1">WIRE:</span>
+          <button class="wire-color-btn w-5 h-5 rounded-full bg-red-500 ring-2 ring-white ring-offset-1 ring-offset-slate-950 transition" data-color="#ef4444" title="Red Wire"></button>
+          <button class="wire-color-btn w-5 h-5 rounded-full bg-blue-500 transition hover:scale-110" data-color="#3b82f6" title="Blue Wire"></button>
+          <button class="wire-color-btn w-5 h-5 rounded-full bg-emerald-500 transition hover:scale-110" data-color="#10b981" title="Green Wire"></button>
+          <button class="wire-color-btn w-5 h-5 rounded-full bg-yellow-400 transition hover:scale-110" data-color="#facc15" title="Yellow Wire"></button>
+          <button class="wire-color-btn w-5 h-5 rounded-full bg-orange-500 transition hover:scale-110" data-color="#f97316" title="Orange Wire"></button>
+          <button class="wire-color-btn w-5 h-5 rounded-full bg-purple-500 transition hover:scale-110" data-color="#a855f7" title="Purple Wire"></button>
+          <button class="wire-color-btn w-5 h-5 rounded-full bg-white transition hover:scale-110" data-color="#f8fafc" title="White Wire"></button>
+        </div>
+
+        <!-- Utility Action Buttons -->
+        <div class="flex items-center space-x-1">
+          <button id="undoWireBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition" title="Undo Wire (Ctrl+Z)">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+          </button>
+          <button id="clearWiresBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-300 transition" title="Clear All Wires">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+          <button id="soundToggleBtn" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition" title="Toggle Synthesized Audio">
+            <svg id="soundOnIcon" class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+            <svg id="soundOffIcon" class="w-4 h-4 text-slate-500 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-slate-950/80 backdrop-blur px-3 sm:px-6 flex overflow-x-auto border-t border-slate-800/80 scrollbar-none">
+      <div class="flex space-x-1 sm:space-x-2 py-1.5">
+        <button class="nav-tab active flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 whitespace-nowrap transition" data-view="dashboard">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap transition" data-view="trainer">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+          <span>Virtual Trainer Kit</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap transition" data-view="breadboard">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+          <span>Breadboard Mode</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap transition" data-view="experiments">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+          <span>Lab Manuals & Truth Tables</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap transition" data-view="timing">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+          <span>Timing Analyzer</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap transition" data-view="viva">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Viva Voce & Quiz</span>
+        </button>
+        <button class="nav-tab flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap transition" data-view="settings">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>Circuits & Config</span>
+        </button>
+      </div>
+    </nav>
+  </header>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- MAIN VIEWPORT CONTAINER -->
+  <main class="flex-1 relative overflow-y-auto">
+
+    <!-- 1. DASHBOARD VIEW -->
+    <section id="view-dashboard" class="p-4 sm:p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
+      <!-- Welcome Hero -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 p-6 sm:p-10 border border-slate-700 shadow-2xl">
+        <div class="absolute -right-10 -bottom-10 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 max-w-3xl space-y-4">
+          <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-mono">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            <span>Virtual Lab Engine Ready • Offline Activated</span>
+          </div>
+          <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white font-tech">
+            Flip-Flop Virtual Electronics Lab
+          </h1>
+          <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+            Recreate authentic digital electronics laboratory experiments virtually. Connect jumper wires between logic switches, clock generators, ICs, and flip-flops with realistic edge-triggering simulation and interactive timing diagrams.
+          </p>
+          <div class="flex flex-wrap gap-3 pt-2">
+            <button onclick="switchView('trainer')" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-900/40 flex items-center space-x-2 transition transform active:scale-95">
+              <span>Launch Virtual Trainer Kit</span>
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </button>
+            <button onclick="switchView('breadboard')" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold border border-slate-700 flex items-center space-x-2 transition">
+              <span>Open Breadboard Mode</span>
+            </button>
+            <button onclick="quickAutoWireDemo('jk')" class="px-4 py-2.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 font-semibold flex items-center space-x-2 transition">
+              <span>⚡ Quick JK Wire Demo</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Launch Flip-Flop Modules Grid -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold text-white font-tech flex items-center space-x-2">
+            <span class="text-emerald-400">#</span>
+            <span>Available Flip-Flop Experiments</span>
+          </h2>
+          <span class="text-xs text-slate-400 font-mono">5 Fully Simulated Modules</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          
+          <!-- SR Flip-Flop Card -->
+          <div class="group bg-slate-900/90 hover:bg-slate-800/90 rounded-xl p-5 border border-slate-800 hover:border-emerald-500/50 transition-all shadow-lg hover:shadow-emerald-950/20 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-800/50">EXP-01</span>
+                <span class="text-xs text-slate-400 font-mono">Clocked / NOR-NAND</span>
+              </div>
+              <h3 class="text-lg font-bold text-white group-hover:text-emerald-300 transition">SR Flip-Flop (Set-Reset)</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                Fundamental bistable multivibrator. Explore Set, Reset, Memory Hold, and the Forbidden / Invalid condition (S=1, R=1).
+              </p>
+            </div>
+            <div class="pt-5 flex items-center justify-between border-t border-slate-800/80 mt-4">
+              <button onclick="loadExperiment('sr')" class="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center space-x-1">
+                <span>View Manual & Wire</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+              <button onclick="quickAutoWireDemo('sr')" class="text-xs font-mono px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Auto-Wire</button>
+            </div>
+          </div>
+
+          <!-- JK Flip-Flop Card -->
+          <div class="group bg-slate-900/90 hover:bg-slate-800/90 rounded-xl p-5 border border-slate-800 hover:border-emerald-500/50 transition-all shadow-lg hover:shadow-emerald-950/20 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-cyan-950 text-cyan-400 border border-cyan-800/50">EXP-02</span>
+                <span class="text-xs text-slate-400 font-mono">Edge-Triggered 74LS76</span>
+              </div>
+              <h3 class="text-lg font-bold text-white group-hover:text-cyan-300 transition">JK Flip-Flop (Universal)</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                Overcomes the SR invalid state by implementing Toggle mode when J=1, K=1. Includes active-LOW Asynchronous PRE & CLR terminals.
+              </p>
+            </div>
+            <div class="pt-5 flex items-center justify-between border-t border-slate-800/80 mt-4">
+              <button onclick="loadExperiment('jk')" class="text-xs font-semibold text-cyan-400 hover:text-cyan-300 flex items-center space-x-1">
+                <span>View Manual & Wire</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+              <button onclick="quickAutoWireDemo('jk')" class="text-xs font-mono px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Auto-Wire</button>
+            </div>
+          </div>
+
+          <!-- D Flip-Flop Card -->
+          <div class="group bg-slate-900/90 hover:bg-slate-800/90 rounded-xl p-5 border border-slate-800 hover:border-emerald-500/50 transition-all shadow-lg hover:shadow-emerald-950/20 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-blue-950 text-blue-400 border border-blue-800/50">EXP-03</span>
+                <span class="text-xs text-slate-400 font-mono">74LS74 Data Latch</span>
+              </div>
+              <h3 class="text-lg font-bold text-white group-hover:text-blue-300 transition">D Flip-Flop (Data / Delay)</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                Transfers input data D straight to output Q upon active clock edge. Crucial building block for shift registers and CPU buffers.
+              </p>
+            </div>
+            <div class="pt-5 flex items-center justify-between border-t border-slate-800/80 mt-4">
+              <button onclick="loadExperiment('d')" class="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center space-x-1">
+                <span>View Manual & Wire</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+              <button onclick="quickAutoWireDemo('d')" class="text-xs font-mono px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Auto-Wire</button>
+            </div>
+          </div>
+
+          <!-- T Flip-Flop Card -->
+          <div class="group bg-slate-900/90 hover:bg-slate-800/90 rounded-xl p-5 border border-slate-800 hover:border-emerald-500/50 transition-all shadow-lg hover:shadow-emerald-950/20 flex flex-col justify-between">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-amber-950 text-amber-400 border border-amber-800/50">EXP-04</span>
+                <span class="text-xs text-slate-400 font-mono">Frequency Divider</span>
+              </div>
+              <h3 class="text-lg font-bold text-white group-hover:text-amber-300 transition">T Flip-Flop (Toggle)</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                Toggles output state on each active clock pulse when T=1. Forms ripple binary counters and divide-by-2 digital clocks.
+              </p>
+            </div>
+            <div class="pt-5 flex items-center justify-between border-t border-slate-800/80 mt-4">
+              <button onclick="loadExperiment('t')" class="text-xs font-semibold text-amber-400 hover:text-amber-300 flex items-center space-x-1">
+                <span>View Manual & Wire</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+              <button onclick="quickAutoWireDemo('t')" class="text-xs font-mono px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Auto-Wire</button>
+            </div>
+          </div>
+
+          <!-- Master-Slave JK Flip-Flop Card -->
+          <div class="group bg-slate-900/90 hover:bg-slate-800/90 rounded-xl p-5 border border-slate-800 hover:border-emerald-500/50 transition-all shadow-lg hover:shadow-emerald-950/20 flex flex-col justify-between sm:col-span-2 lg:col-span-2">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-semibold px-2.5 py-1 rounded-md bg-purple-950 text-purple-400 border border-purple-800/50">EXP-05</span>
+                <span class="text-xs text-slate-400 font-mono">Pulse-Triggered Dual Stage</span>
+              </div>
+              <h3 class="text-lg font-bold text-white group-hover:text-purple-300 transition">Master-Slave JK Flip-Flop</h3>
+              <p class="text-xs text-slate-400 leading-relaxed">
+                Completely eliminates race-around conditions in level-triggered JK flip-flops. Master stage samples during CLK=1; Slave stage transfers to output Q during CLK 1-to-0 transition.
+              </p>
+            </div>
+            <div class="pt-5 flex items-center justify-between border-t border-slate-800/80 mt-4">
+              <button onclick="loadExperiment('msjk')" class="text-xs font-semibold text-purple-400 hover:text-purple-300 flex items-center space-x-1">
+                <span>View Manual & Wire</span>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              </button>
+              <button onclick="quickAutoWireDemo('msjk')" class="text-xs font-mono px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Auto-Wire</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Lab Status & Quick Features Overview -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center space-x-3 text-emerald-400">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <h4 class="font-bold text-white">100% Offline Simulation</h4>
+          </div>
+          <p class="text-xs text-slate-400">All logic computations run locally in your browser. IndexedDB & LocalStorage safeguard your wire configurations and observation sheets.</p>
+        </div>
+
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center space-x-3 text-cyan-400">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <h4 class="font-bold text-white">Interactive Tap-to-Connect</h4>
+          </div>
+          <p class="text-xs text-slate-400">Tap terminal A then terminal B to draw realistic curved jumper wires with physical droop, terminal validation, and conflict alerts.</p>
+        </div>
+
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-2">
+          <div class="flex items-center space-x-3 text-amber-400">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+            <h4 class="font-bold text-white">Live Waveform Analyzer</h4>
+          </div>
+          <p class="text-xs text-slate-400">Real-time digital oscilloscope tracks Clock, Inputs, and Q / Q̅ transitions synchronously as you toggle inputs or run the clock generator.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 2. VIRTUAL TRAINER KIT VIEW -->
+    <section id="view-trainer" class="hidden p-2 sm:p-6 max-w-[1400px] mx-auto space-y-4">
+      
+      <!-- Trainer Kit Top Toolbar -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900 p-3 rounded-xl border border-slate-800 shadow">
+        <div class="flex items-center space-x-3">
+          <span class="font-tech text-emerald-400 font-bold tracking-wider text-sm sm:text-base">DIGILAB MODULAR TRAINER BOARD DL-7400</span>
+          <span id="activePresetBadge" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-mono">Manual Mode</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Preset Auto-Wire Dropdown -->
+          <div class="relative inline-block text-left">
+            <select id="autoWireSelect" onchange="handleAutoWireSelect(this.value)" class="bg-slate-800 text-xs font-semibold text-slate-200 border border-slate-700 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-emerald-500">
+              <option value="">⚡ Load Experiment Auto-Wire...</option>
+              <option value="sr">SR Flip-Flop Setup</option>
+              <option value="jk">JK Flip-Flop Setup</option>
+              <option value="d">D Flip-Flop Setup</option>
+              <option value="t">T Flip-Flop Setup</option>
+              <option value="msjk">Master-Slave JK Setup</option>
+            </select>
+          </div>
+          <button onclick="WireManager.clearAllWires()" class="px-3 py-1.5 rounded-lg bg-rose-950/80 hover:bg-rose-900 border border-rose-800/60 text-rose-300 text-xs font-semibold transition">
+            Remove All Wires
+          </button>
+        </div>
+      </div>
+
+      <!-- MAIN PCB BOARD CONTAINER -->
+      <div id="trainerBoard" class="relative pcb-texture rounded-2xl border-4 border-[#072419] shadow-2xl p-4 sm:p-7 overflow-x-auto min-w-[980px]">
+        
+        <!-- SVG Canvas for Jumper Wires Overlay -->
+        <svg id="wireCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-30" style="min-height: 720px;"></svg>
+
+        <!-- Silkscreen Header on PCB -->
+        <div class="flex items-center justify-between border-b-2 border-emerald-700/60 pb-3 mb-6">
+          <div class="flex items-center space-x-4">
+            <div class="text-[#f4f6e8] font-tech text-2xl font-black tracking-widest drop-shadow">DIGILAB DL-7400</div>
+            <div class="text-[#c8a452] text-xs font-mono font-bold tracking-wider uppercase border border-[#c8a452]/40 px-2 py-0.5 rounded">Digital Logic Trainer Kit</div>
+          </div>
+          <div class="text-[#f4f6e8]/70 font-mono text-xs text-right">
+            <span>VCC: +5.0V DC REGULATED</span> | <span>TTL COMPATIBLE</span>
+          </div>
+        </div>
+
+        <!-- PCB Grid Modules -->
+        <div class="grid grid-cols-12 gap-5">
+          
+          <!-- LEFT COLUMN: POWER & CLOCK GENERATOR (Cols 1-3) -->
+          <div class="col-span-3 space-y-5">
+            
+            <!-- POWER MODULE -->
+            <div class="bg-[#052319]/90 border-2 border-[#0d6346] rounded-xl p-4 shadow-inner relative">
+              <div class="text-[#f4f6e8] text-xs font-bold tracking-widest font-tech border-b border-[#0d6346] pb-1.5 mb-3 flex items-center justify-between">
+                <span>DC POWER SUPPLY</span>
+                <span class="text-[10px] text-[#c8a452]">5V / GND</span>
+              </div>
+              <div class="flex items-center justify-around py-2">
+                <!-- VCC Terminal -->
+                <div class="flex flex-col items-center space-y-1">
+                  <div class="terminal-touch" data-id="PWR_VCC" data-type="vcc" data-name="+5V VCC">
+                    <div class="terminal-pin bg-red-600 border-red-300"></div>
+                  </div>
+                  <span class="text-[11px] font-mono font-bold text-red-400">+5V</span>
+                </div>
+                <!-- GND Terminal -->
+                <div class="flex flex-col items-center space-y-1">
+                  <div class="terminal-touch" data-id="PWR_GND" data-type="gnd" data-name="0V GND">
+                    <div class="terminal-pin bg-slate-900 border-slate-400"></div>
+                  </div>
+                  <span class="text-[11px] font-mono font-bold text-slate-300">GND</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- CLOCK GENERATOR MODULE -->
+            <div class="bg-[#052319]/90 border-2 border-[#0d6346] rounded-xl p-4 shadow-inner space-y-4">
+              <div class="text-[#f4f6e8] text-xs font-bold tracking-widest font-tech border-b border-[#0d6346] pb-1.5 flex items-center justify-between">
+                <span>CLOCK PULSER</span>
+                <div id="clkStatusLed" class="led-indicator active"></div>
+              </div>
+
+              <!-- Manual Pulser Button -->
+              <div class="bg-slate-950/60 p-3 rounded-lg border border-emerald-900/60 flex items-center justify-between">
+                <div>
+                  <span class="text-xs font-bold text-slate-200 block">MANUAL PULSE</span>
+                  <span class="text-[10px] text-slate-400">Single Shot Edge</span>
+                </div>
+                <button id="manualClockBtn" class="px-3.5 py-2 rounded-lg bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-mono font-bold text-xs shadow-lg active:scale-95 transition flex items-center space-x-1.5">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"/></svg>
+                  <span>PULSE</span>
+                </button>
+              </div>
+
+              <!-- Auto Clock Frequency Generator -->
+              <div class="bg-slate-950/60 p-3 rounded-lg border border-emerald-900/60 space-y-2.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-bold text-slate-200">AUTO CLOCK</span>
+                  <button id="autoClockToggleBtn" class="px-2.5 py-1 text-[11px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-600/30">
+                    START
+                  </button>
+                </div>
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-[11px] text-slate-400">Frequency:</span>
+                  <select id="clockFreqSelect" class="bg-slate-900 text-xs text-emerald-300 font-mono border border-slate-700 rounded px-2 py-0.5">
+                    <option value="0.5">0.5 Hz (Slow)</option>
+                    <option value="1" selected>1.0 Hz (1s)</option>
+                    <option value="2">2.0 Hz</option>
+                    <option value="5">5.0 Hz</option>
+                    <option value="10">10.0 Hz</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Clock Output Terminals -->
+              <div class="flex items-center justify-around pt-2 border-t border-[#0d6346]/60">
+                <div class="flex flex-col items-center space-y-1">
+                  <div class="terminal-touch" data-id="CLK_OUT" data-type="output" data-name="Clock Output (CLK)">
+                    <div class="terminal-pin bg-amber-500 border-amber-200"></div>
+                  </div>
+                  <span class="text-[11px] font-mono font-bold text-amber-300">CLK</span>
+                </div>
+                <div class="flex flex-col items-center space-y-1">
+                  <div class="terminal-touch" data-id="CLK_NOT_OUT" data-type="output" data-name="Complementary Clock (CLK_BAR)">
+                    <div class="terminal-pin bg-amber-600 border-amber-300"></div>
+                  </div>
+                  <span class="text-[11px] font-mono font-bold text-amber-300">CLK̅</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- LOGIC LEVEL REFERENCE -->
+            <div class="bg-[#052319]/70 border border-[#0d6346] rounded-xl p-3 text-[11px] text-slate-300 space-y-1 font-mono">
+              <div class="text-[#c8a452] font-bold">CIRCUIT GUIDE:</div>
+              <div>• Tap source pin, then target pin.</div>
+              <div>• Preset (PRE) & Clear (CLR) are active LOW (0 = triggered).</div>
+              <div>• Red wire: HIGH (+5V). Blue: Logic signals.</div>
+            </div>
+
+          </div>
+
+          <!-- CENTER COLUMN: LOGIC SWITCHES & FLIP-FLOP SECTIONS (Cols 4-9) -->
+          <div class="col-span-6 space-y-5">
+            
+            <!-- 10 LOGIC INPUT SWITCHES ROW -->
+            <div class="bg-[#052319]/90 border-2 border-[#0d6346] rounded-xl p-3.5 shadow-inner">
+              <div class="text-[#f4f6e8] text-xs font-bold tracking-widest font-tech border-b border-[#0d6346] pb-1.5 mb-3 flex items-center justify-between">
+                <span>LOGIC INPUT SWITCHES (SW 1 - 8)</span>
+                <span class="text-[10px] text-[#c8a452]">BINARY LEVEL OUTPUT (0 / 1)</span>
+              </div>
+              <div class="grid grid-cols-8 gap-2">
+                <!-- 8 Interactive Switch Units -->
+                <script>
+                  // Dynamically write 8 switches for clean concise markup
+                  for(let i=1; i<=8; i++) {
+                    document.write(`
+                      <div class="flex flex-col items-center space-y-1.5 bg-slate-950/40 p-2 rounded-lg border border-[#0d6346]/40">
+                        <span class="text-[10px] font-mono font-bold text-slate-300">SW${i}</span>
+                        <div id="swLed_${i}" class="led-indicator"></div>
+                        <div id="swToggle_${i}" onclick="SimEngine.toggleSwitch(${i})" class="rocker-switch" title="Toggle Switch ${i}">
+                          <div class="rocker-lever"></div>
+                        </div>
+                        <div class="terminal-touch mt-1" data-id="SW_OUT_${i}" data-type="output" data-name="Switch ${i} Output">
+                          <div class="terminal-pin bg-blue-500 border-blue-200"></div>
+                        </div>
+                        <span id="swVal_${i}" class="text-[10px] font-mono font-bold text-slate-400">0</span>
+                      </div>
+                    `);
+                  }
+                </script>
+              </div>
+            </div>
+
+            <!-- MODULAR FLIP-FLOP SECTION -->
+            <div class="bg-[#052319]/95 border-2 border-[#0d6346] rounded-xl p-4 shadow-xl">
+              <div class="flex items-center justify-between border-b border-[#0d6346] pb-2 mb-4">
+                <span class="text-[#f4f6e8] text-xs font-bold tracking-widest font-tech">DIGITAL FLIP-FLOP LOGIC UNITS</span>
+                <div class="flex space-x-1">
+                  <button onclick="setFlipFlopTab('sr')" id="tabBtn_sr" class="ff-tab-btn px-2.5 py-1 text-xs font-mono font-bold rounded bg-emerald-700 text-white">SR</button>
+                  <button onclick="setFlipFlopTab('jk')" id="tabBtn_jk" class="ff-tab-btn px-2.5 py-1 text-xs font-mono font-bold rounded bg-slate-800 text-slate-400 hover:text-white">JK</button>
+                  <button onclick="setFlipFlopTab('d')" id="tabBtn_d" class="ff-tab-btn px-2.5 py-1 text-xs font-mono font-bold rounded bg-slate-800 text-slate-400 hover:text-white">D</button>
+                  <button onclick="setFlipFlopTab('t')" id="tabBtn_t" class="ff-tab-btn px-2.5 py-1 text-xs font-mono font-bold rounded bg-slate-800 text-slate-400 hover:text-white">T</button>
+                  <button onclick="setFlipFlopTab('msjk')" id="tabBtn_msjk" class="ff-tab-btn px-2.5 py-1 text-xs font-mono font-bold rounded bg-slate-800 text-slate-400 hover:text-white">MS-JK</button>
+                </div>
+              </div>
+
+              <!-- FLIP-FLOP MODULE CONTAINER -->
+              <div class="bg-slate-950/70 p-5 rounded-xl border border-emerald-900/60 min-h-[260px] flex items-center justify-center">
+                
+                <!-- SR Module View -->
+                <div id="module_sr" class="ff-module-view w-full max-w-md">
+                  <div class="text-center mb-3">
+                    <span class="font-mono text-xs font-bold text-emerald-400 bg-emerald-950/80 px-3 py-1 rounded-full border border-emerald-800/50">CLOCKABLE SR FLIP-FLOP (NOR/NAND)</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-slate-900/80 p-6 rounded-2xl border-2 border-emerald-600/40 shadow-2xl relative">
+                    <!-- Inputs -->
+                    <div class="flex flex-col space-y-4">
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="SR_S" data-type="input" data-name="SR - S (Set)">
+                          <div class="terminal-pin bg-yellow-400 border-yellow-100"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">S (Set)</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="SR_CLK" data-type="input" data-name="SR - CLK (Clock)">
+                          <div class="terminal-pin bg-amber-500 border-amber-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">CLK</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="SR_R" data-type="input" data-name="SR - R (Reset)">
+                          <div class="terminal-pin bg-yellow-400 border-yellow-100"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">R (Reset)</span>
+                      </div>
+                    </div>
+
+                    <!-- Schematic Symbol in Center -->
+                    <div class="flex flex-col items-center justify-center px-4 py-2 bg-slate-950 rounded-xl border border-slate-800 text-center">
+                      <span class="font-tech text-base font-bold text-emerald-400">SR-FF</span>
+                      <span id="srStateStatus" class="text-[10px] font-mono text-slate-400 mt-1">HOLD</span>
+                    </div>
+
+                    <!-- Outputs -->
+                    <div class="flex flex-col space-y-5">
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q</span>
+                        <div class="terminal-touch" data-id="SR_Q" data-type="output" data-name="SR - Q Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q̅</span>
+                        <div class="terminal-touch" data-id="SR_Q_BAR" data-type="output" data-name="SR - Q_BAR Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- JK Module View -->
+                <div id="module_jk" class="ff-module-view hidden w-full max-w-lg">
+                  <div class="text-center mb-3">
+                    <span class="font-mono text-xs font-bold text-cyan-400 bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-800/50">UNIVERSAL JK FLIP-FLOP (IC 74LS76)</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-slate-900/80 p-6 rounded-2xl border-2 border-cyan-600/40 shadow-2xl relative">
+                    <!-- Inputs -->
+                    <div class="flex flex-col space-y-3">
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="JK_PRE" data-type="input" data-name="JK - PRE (Active Low)">
+                          <div class="terminal-pin bg-purple-500 border-purple-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-purple-300">PRE̅</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="JK_J" data-type="input" data-name="JK - J Input">
+                          <div class="terminal-pin bg-yellow-400 border-yellow-100"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">J</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="JK_CLK" data-type="input" data-name="JK - CLK Input">
+                          <div class="terminal-pin bg-amber-500 border-amber-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">CLK</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="JK_K" data-type="input" data-name="JK - K Input">
+                          <div class="terminal-pin bg-yellow-400 border-yellow-100"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">K</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="JK_CLR" data-type="input" data-name="JK - CLR (Active Low)">
+                          <div class="terminal-pin bg-purple-500 border-purple-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-purple-300">CLR̅</span>
+                      </div>
+                    </div>
+
+                    <!-- Schematic Symbol in Center -->
+                    <div class="flex flex-col items-center justify-center px-4 py-2 bg-slate-950 rounded-xl border border-slate-800 text-center">
+                      <span class="font-tech text-base font-bold text-cyan-400">JK-FF</span>
+                      <span id="jkStateStatus" class="text-[10px] font-mono text-slate-400 mt-1">HOLD</span>
+                    </div>
+
+                    <!-- Outputs -->
+                    <div class="flex flex-col space-y-6">
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q</span>
+                        <div class="terminal-touch" data-id="JK_Q" data-type="output" data-name="JK - Q Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q̅</span>
+                        <div class="terminal-touch" data-id="JK_Q_BAR" data-type="output" data-name="JK - Q_BAR Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- D Module View -->
+                <div id="module_d" class="ff-module-view hidden w-full max-w-lg">
+                  <div class="text-center mb-3">
+                    <span class="font-mono text-xs font-bold text-blue-400 bg-blue-950/80 px-3 py-1 rounded-full border border-blue-800/50">DATA / DELAY FLIP-FLOP (IC 74LS74)</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-slate-900/80 p-6 rounded-2xl border-2 border-blue-600/40 shadow-2xl relative">
+                    <!-- Inputs -->
+                    <div class="flex flex-col space-y-3">
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="D_PRE" data-type="input" data-name="D - PRE (Active Low)">
+                          <div class="terminal-pin bg-purple-500 border-purple-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-purple-300">PRE̅</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="D_D" data-type="input" data-name="D - Data Input">
+                          <div class="terminal-pin bg-yellow-400 border-yellow-100"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">D (Data)</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="D_CLK" data-type="input" data-name="D - CLK Input">
+                          <div class="terminal-pin bg-amber-500 border-amber-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">CLK</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="D_CLR" data-type="input" data-name="D - CLR (Active Low)">
+                          <div class="terminal-pin bg-purple-500 border-purple-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-purple-300">CLR̅</span>
+                      </div>
+                    </div>
+
+                    <!-- Schematic Symbol in Center -->
+                    <div class="flex flex-col items-center justify-center px-4 py-2 bg-slate-950 rounded-xl border border-slate-800 text-center">
+                      <span class="font-tech text-base font-bold text-blue-400">D-FF</span>
+                      <span id="dStateStatus" class="text-[10px] font-mono text-slate-400 mt-1">LATCH</span>
+                    </div>
+
+                    <!-- Outputs -->
+                    <div class="flex flex-col space-y-6">
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q</span>
+                        <div class="terminal-touch" data-id="D_Q" data-type="output" data-name="D - Q Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q̅</span>
+                        <div class="terminal-touch" data-id="D_Q_BAR" data-type="output" data-name="D - Q_BAR Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- T Module View -->
+                <div id="module_t" class="ff-module-view hidden w-full max-w-lg">
+                  <div class="text-center mb-3">
+                    <span class="font-mono text-xs font-bold text-amber-400 bg-amber-950/80 px-3 py-1 rounded-full border border-amber-800/50">TOGGLE FLIP-FLOP (T-FF)</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-slate-900/80 p-6 rounded-2xl border-2 border-amber-600/40 shadow-2xl relative">
+                    <!-- Inputs -->
+                    <div class="flex flex-col space-y-3">
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="T_PRE" data-type="input" data-name="T - PRE (Active Low)">
+                          <div class="terminal-pin bg-purple-500 border-purple-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-purple-300">PRE̅</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="T_T" data-type="input" data-name="T - Toggle Input">
+                          <div class="terminal-pin bg-yellow-400 border-yellow-100"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">T</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="T_CLK" data-type="input" data-name="T - CLK Input">
+                          <div class="terminal-pin bg-amber-500 border-amber-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">CLK</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="T_CLR" data-type="input" data-name="T - CLR (Active Low)">
+                          <div class="terminal-pin bg-purple-500 border-purple-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-purple-300">CLR̅</span>
+                      </div>
+                    </div>
+
+                    <!-- Schematic Symbol in Center -->
+                    <div class="flex flex-col items-center justify-center px-4 py-2 bg-slate-950 rounded-xl border border-slate-800 text-center">
+                      <span class="font-tech text-base font-bold text-amber-400">T-FF</span>
+                      <span id="tStateStatus" class="text-[10px] font-mono text-slate-400 mt-1">HOLD</span>
+                    </div>
+
+                    <!-- Outputs -->
+                    <div class="flex flex-col space-y-6">
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q</span>
+                        <div class="terminal-touch" data-id="T_Q" data-type="output" data-name="T - Q Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q̅</span>
+                        <div class="terminal-touch" data-id="T_Q_BAR" data-type="output" data-name="T - Q_BAR Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Master-Slave JK Module View -->
+                <div id="module_msjk" class="ff-module-view hidden w-full max-w-xl">
+                  <div class="text-center mb-3">
+                    <span class="font-mono text-xs font-bold text-purple-400 bg-purple-950/80 px-3 py-1 rounded-full border border-purple-800/50">MASTER-SLAVE JK FLIP-FLOP (DUAL STAGE)</span>
+                  </div>
+                  <div class="flex items-center justify-between bg-slate-900/80 p-5 rounded-2xl border-2 border-purple-600/40 shadow-2xl relative">
+                    <!-- Inputs -->
+                    <div class="flex flex-col space-y-3">
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="MSJK_PRE" data-type="input" data-name="MSJK - PRE">
+                          <div class="terminal-pin bg-purple-500 border-purple-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-purple-300">PRE̅</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="MSJK_J" data-type="input" data-name="MSJK - J Input">
+                          <div class="terminal-pin bg-yellow-400 border-yellow-100"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">J</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="MSJK_CLK" data-type="input" data-name="MSJK - CLK Input">
+                          <div class="terminal-pin bg-amber-500 border-amber-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">CLK</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="MSJK_K" data-type="input" data-name="MSJK - K Input">
+                          <div class="terminal-pin bg-yellow-400 border-yellow-100"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-200">K</span>
+                      </div>
+                      <div class="flex items-center space-x-3">
+                        <div class="terminal-touch" data-id="MSJK_CLR" data-type="input" data-name="MSJK - CLR">
+                          <div class="terminal-pin bg-purple-500 border-purple-200"></div>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-purple-300">CLR̅</span>
+                      </div>
+                    </div>
+
+                    <!-- Dual Stage Graphic -->
+                    <div class="flex items-center space-x-2">
+                      <div class="p-2.5 bg-slate-950 rounded-lg border border-purple-800/40 text-center">
+                        <span class="text-[10px] font-mono text-purple-400 block font-bold">MASTER</span>
+                        <span id="msjkMasterStatus" class="text-[9px] font-mono text-slate-400">Qm=0</span>
+                      </div>
+                      <span class="text-slate-600 font-mono">→</span>
+                      <div class="p-2.5 bg-slate-950 rounded-lg border border-purple-800/40 text-center">
+                        <span class="text-[10px] font-mono text-purple-400 block font-bold">SLAVE</span>
+                        <span id="msjkSlaveStatus" class="text-[9px] font-mono text-slate-400">Qs=0</span>
+                      </div>
+                    </div>
+
+                    <!-- Outputs -->
+                    <div class="flex flex-col space-y-6">
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q</span>
+                        <div class="terminal-touch" data-id="MSJK_Q" data-type="output" data-name="MSJK - Q Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                      <div class="flex items-center space-x-3 justify-end">
+                        <span class="text-xs font-mono font-bold text-slate-200">Q̅</span>
+                        <div class="terminal-touch" data-id="MSJK_Q_BAR" data-type="output" data-name="MSJK - Q_BAR Output">
+                          <div class="terminal-pin bg-emerald-500 border-emerald-200"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT COLUMN: OUTPUT LEDS & BCD 7-SEGMENT DISPLAY (Cols 10-12) -->
+          <div class="col-span-3 space-y-5">
+            
+            <!-- LOGIC OUTPUT LEDS -->
+            <div class="bg-[#052319]/90 border-2 border-[#0d6346] rounded-xl p-4 shadow-inner space-y-3">
+              <div class="text-[#f4f6e8] text-xs font-bold tracking-widest font-tech border-b border-[#0d6346] pb-1.5 flex items-center justify-between">
+                <span>LOGIC OUTPUTS (L1 - 8)</span>
+                <span class="text-[10px] text-[#c8a452]">ACTIVE HIGH</span>
+              </div>
+              <div class="grid grid-cols-4 gap-2.5">
+                <script>
+                  for(let i=1; i<=8; i++) {
+                    document.write(`
+                      <div class="flex flex-col items-center space-y-1 bg-slate-950/50 p-2 rounded-lg border border-[#0d6346]/40">
+                        <span class="text-[10px] font-mono font-bold text-slate-300">L${i}</span>
+                        <div id="outLed_${i}" class="led-indicator"></div>
+                        <div class="terminal-touch mt-1" data-id="LED_IN_${i}" data-type="input" data-name="Output LED ${i} Input">
+                          <div class="terminal-pin bg-emerald-600 border-emerald-200"></div>
+                        </div>
+                      </div>
+                    `);
+                  }
+                </script>
+              </div>
+            </div>
+
+            <!-- BCD 7-SEGMENT DISPLAY WITH DECODER -->
+            <div class="bg-[#052319]/90 border-2 border-[#0d6346] rounded-xl p-4 shadow-inner space-y-3">
+              <div class="text-[#f4f6e8] text-xs font-bold tracking-widest font-tech border-b border-[#0d6346] pb-1.5 flex items-center justify-between">
+                <span>7-SEGMENT BCD</span>
+                <span class="text-[10px] text-amber-400">HEX DECODER</span>
+              </div>
+              
+              <div class="flex items-center justify-around py-1">
+                <!-- 7-Segment Readout -->
+                <div class="bg-black border-2 border-slate-800 rounded-lg px-6 py-2 shadow-2xl flex items-center justify-center">
+                  <span id="sevenSegmentDigit" class="font-tech text-4xl font-black text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">0</span>
+                </div>
+
+                <!-- BCD Binary Inputs A, B, C, D (D is MSB, A is LSB) -->
+                <div class="grid grid-cols-2 gap-2 text-center">
+                  <div class="flex flex-col items-center">
+                    <span class="text-[10px] font-mono text-slate-300">D (8)</span>
+                    <div class="terminal-touch" data-id="BCD_D" data-type="input" data-name="BCD Input D">
+                      <div class="terminal-pin bg-blue-500 border-blue-200"></div>
+                    </div>
+                  </div>
+                  <div class="flex flex-col items-center">
+                    <span class="text-[10px] font-mono text-slate-300">C (4)</span>
+                    <div class="terminal-touch" data-id="BCD_C" data-type="input" data-name="BCD Input C">
+                      <div class="terminal-pin bg-blue-500 border-blue-200"></div>
+                    </div>
+                  </div>
+                  <div class="flex flex-col items-center">
+                    <span class="text-[10px] font-mono text-slate-300">B (2)</span>
+                    <div class="terminal-touch" data-id="BCD_B" data-type="input" data-name="BCD Input B">
+                      <div class="terminal-pin bg-blue-500 border-blue-200"></div>
+                    </div>
+                  </div>
+                  <div class="flex flex-col items-center">
+                    <span class="text-[10px] font-mono text-slate-300">A (1)</span>
+                    <div class="terminal-touch" data-id="BCD_A" data-type="input" data-name="BCD Input A">
+                      <div class="terminal-pin bg-blue-500 border-blue-200"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- QUICK ACTIONS -->
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800 space-y-2">
+              <span class="text-xs font-bold text-slate-300 block">REAL-TIME INSPECTOR</span>
+              <div id="inspectorText" class="text-[11px] font-mono text-slate-400 bg-slate-900 p-2 rounded border border-slate-800">
+                Ready. Click/tap any terminal to begin jumper wiring.
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- 3. BREADBOARD SIMULATOR VIEW -->
+    <section id="view-breadboard" class="hidden p-3 sm:p-6 max-w-7xl mx-auto space-y-6">
+      <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold font-tech text-white flex items-center space-x-2">
+            <span class="text-cyan-400">#</span>
+            <span>Virtual Breadboard Circuit Prototyper</span>
+          </h2>
+          <p class="text-xs text-slate-400">Mount flip-flop IC chips (74LS74 Dual D, 74LS76 Dual JK) and plug jumper wires directly into tie-points.</p>
+        </div>
+        <!-- IC Selector Drawer -->
+        <div class="flex items-center space-x-2">
+          <span class="text-xs font-mono text-slate-400">MOUNT IC:</span>
+          <button onclick="BreadboardSim.mountIC('74LS76')" class="px-3 py-1.5 rounded-lg bg-cyan-900/60 hover:bg-cyan-800 text-cyan-300 border border-cyan-700/60 text-xs font-semibold">
+            74LS76 (Dual JK)
+          </button>
+          <button onclick="BreadboardSim.mountIC('74LS74')" class="px-3 py-1.5 rounded-lg bg-blue-900/60 hover:bg-blue-800 text-blue-300 border border-blue-700/60 text-xs font-semibold">
+            74LS74 (Dual D)
+          </button>
+        </div>
+      </div>
+
+      <!-- BREADBOARD INTERACTIVE CANVAS CONTAINER -->
+      <div class="relative bg-slate-950 p-6 rounded-2xl border-4 border-slate-800 shadow-2xl overflow-x-auto min-w-[900px]">
+        <!-- Breadboard Header Power Rails -->
+        <div class="flex items-center justify-between mb-4 px-2">
+          <div class="flex items-center space-x-4 text-xs font-mono font-bold">
+            <span class="text-rose-500">+ (VCC Rail)</span>
+            <span class="text-blue-500">- (GND Rail)</span>
+          </div>
+          <span id="bbMountedLabel" class="text-xs font-mono bg-slate-900 px-3 py-1 rounded-full text-emerald-400 border border-slate-800">
+            Active IC: 74LS76 Dual JK Flip-Flop
+          </span>
+        </div>
+
+        <!-- The Physical Breadboard Plastic Shell -->
+        <div class="relative bg-[#e2e8f0] rounded-xl p-5 shadow-2xl border-2 border-slate-400 text-slate-800 select-none">
+          
+          <!-- Top Power Rails -->
+          <div class="flex flex-col space-y-1 mb-4 pb-2 border-b border-slate-300">
+            <div class="flex items-center space-x-1.5">
+              <span class="text-[10px] font-bold text-red-600 w-4">+</span>
+              <div class="flex space-x-2">
+                <script>
+                  for(let c=1; c<=20; c++) {
+                    document.write(`<div class="bb-hole bg-red-950/20" title="VCC Rail Pt ${c}" onclick="BreadboardSim.handleHoleClick('VCC_${c}')"></div>`);
+                  }
+                </script>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <span class="text-[10px] font-bold text-blue-600 w-4">-</span>
+              <div class="flex space-x-2">
+                <script>
+                  for(let c=1; c<=20; c++) {
+                    document.write(`<div class="bb-hole bg-blue-950/20" title="GND Rail Pt ${c}" onclick="BreadboardSim.handleHoleClick('GND_${c}')"></div>`);
+                  }
+                </script>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Terminal Strips & IC Socket Area -->
+          <div class="relative py-2">
+            
+            <!-- Rows A - E -->
+            <div class="grid grid-cols-20 gap-2 mb-3">
+              <script>
+                for(let c=1; c<=20; c++) {
+                  document.write(`
+                    <div class="flex flex-col space-y-1 items-center">
+                      <span class="text-[9px] font-mono text-slate-500 font-bold">${c}</span>
+                      <div class="bb-hole" title="Pin ${c}-A" onclick="BreadboardSim.handleHoleClick('P_${c}_A')"></div>
+                      <div class="bb-hole" title="Pin ${c}-B" onclick="BreadboardSim.handleHoleClick('P_${c}_B')"></div>
+                      <div class="bb-hole" title="Pin ${c}-C" onclick="BreadboardSim.handleHoleClick('P_${c}_C')"></div>
+                    </div>
+                  `);
+                }
+              </script>
+            </div>
+
+            <!-- Center Divider Trough (Where the IC is placed) -->
+            <div class="h-10 bg-slate-400/80 rounded my-1 flex items-center justify-center relative">
+              <div class="w-full border-t border-dashed border-slate-500"></div>
+              
+              <!-- Realistic IC Graphic mounted over columns 7 to 14 -->
+              <div id="breadboardIC" class="absolute ic-package h-14 w-80 rounded-sm flex items-center justify-between px-3 text-white font-mono shadow-2xl z-20">
+                <div class="ic-notch"></div>
+                <div class="text-xs font-bold tracking-wider text-slate-300" id="bbICName">
+                  SN74LS76N • DUAL JK FLIP-FLOP
+                </div>
+                <div class="text-[9px] text-slate-500">DIP-16</div>
+              </div>
+            </div>
+
+            <!-- Rows F - J -->
+            <div class="grid grid-cols-20 gap-2 mt-3">
+              <script>
+                for(let c=1; c<=20; c++) {
+                  document.write(`
+                    <div class="flex flex-col space-y-1 items-center">
+                      <div class="bb-hole" title="Pin ${c}-F" onclick="BreadboardSim.handleHoleClick('P_${c}_F')"></div>
+                      <div class="bb-hole" title="Pin ${c}-G" onclick="BreadboardSim.handleHoleClick('P_${c}_G')"></div>
+                      <div class="bb-hole" title="Pin ${c}-H" onclick="BreadboardSim.handleHoleClick('P_${c}_H')"></div>
+                      <span class="text-[9px] font-mono text-slate-500 font-bold">${c}</span>
+                    </div>
+                  `);
+                }
+              </script>
+            </div>
+
+          </div>
+
+          <!-- Bottom Power Rails -->
+          <div class="flex flex-col space-y-1 mt-4 pt-2 border-t border-slate-300">
+            <div class="flex items-center space-x-1.5">
+              <span class="text-[10px] font-bold text-red-600 w-4">+</span>
+              <div class="flex space-x-2">
+                <script>
+                  for(let c=1; c<=20; c++) {
+                    document.write(`<div class="bb-hole bg-red-950/20" title="VCC Rail Pt ${c}" onclick="BreadboardSim.handleHoleClick('VCC2_${c}')"></div>`);
+                  }
+                </script>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <span class="text-[10px] font-bold text-blue-600 w-4">-</span>
+              <div class="flex space-x-2">
+                <script>
+                  for(let c=1; c<=20; c++) {
+                    document.write(`<div class="bb-hole bg-blue-950/20" title="GND Rail Pt ${c}" onclick="BreadboardSim.handleHoleClick('GND2_${c}')"></div>`);
+                  }
+                </script>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Integrated Breadboard Pinout Helper & Signal Injector -->
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
+            <span class="text-xs font-bold text-cyan-400 font-tech">ACTIVE PIN CONFIGURATION</span>
+            <div id="bbPinGuide" class="text-xs font-mono text-slate-300 space-y-1 bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+              <div>Pin 1: 1CLK (Clock Input 1)</div>
+              <div>Pin 2: 1PRE (Active-LOW Preset)</div>
+              <div>Pin 3: 1CLR (Active-LOW Clear)</div>
+              <div>Pin 4: 1J (J Logic Input)</div>
+              <div>Pin 5: VCC (+5V Power)</div>
+              <div>Pin 15: 1Q (Output Q) | Pin 14: 1Q̅ (Output Q̅)</div>
+              <div>Pin 16: 1K (K Logic Input) | Pin 13: GND</div>
+            </div>
+          </div>
+          <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+            <span class="text-xs font-bold text-emerald-400 font-tech">BREADBOARD TEST CONTROLS</span>
+            <p class="text-xs text-slate-400">Directly syncs with the Trainer simulation core. Wires connected in Trainer mode automatically stimulate and reflect on the mounted IC pins.</p>
+            <div class="flex items-center space-x-3">
+              <button onclick="switchView('trainer')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition">
+                Switch to Trainer Board Wiring
+              </button>
+              <button onclick="SimEngine.pulseClock()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition">
+                Inject 1-Shot Clock Pulse
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 4. EXPERIMENTS LAB MANUALS & OBSERVATION TABLES -->
+    <section id="view-experiments" class="hidden p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+      
+      <!-- Experiment Navigation Tabs -->
+      <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+        <button onclick="renderExperiment('sr')" id="expTab_sr" class="exp-nav-btn px-4 py-2 rounded-xl text-xs font-bold font-mono bg-emerald-600 text-white">SR FLIP-FLOP</button>
+        <button onclick="renderExperiment('jk')" id="expTab_jk" class="exp-nav-btn px-4 py-2 rounded-xl text-xs font-bold font-mono bg-slate-900 text-slate-400 hover:text-white">JK FLIP-FLOP</button>
+        <button onclick="renderExperiment('d')" id="expTab_d" class="exp-nav-btn px-4 py-2 rounded-xl text-xs font-bold font-mono bg-slate-900 text-slate-400 hover:text-white">D FLIP-FLOP</button>
+        <button onclick="renderExperiment('t')" id="expTab_t" class="exp-nav-btn px-4 py-2 rounded-xl text-xs font-bold font-mono bg-slate-900 text-slate-400 hover:text-white">T FLIP-FLOP</button>
+        <button onclick="renderExperiment('msjk')" id="expTab_msjk" class="exp-nav-btn px-4 py-2 rounded-xl text-xs font-bold font-mono bg-slate-900 text-slate-400 hover:text-white">MASTER-SLAVE JK</button>
+      </div>
+
+      <!-- Active Experiment Content Container -->
+      <div id="experimentContainer" class="space-y-6">
+        <!-- Dynamically injected via renderExperiment() -->
+      </div>
+    </section>
+
+
+    <!-- 5. TIMING ANALYZER (LIVE OSCILLOSCOPE) -->
+    <section id="view-timing" class="hidden p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+      <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 shadow flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold font-tech text-white flex items-center space-x-2">
+            <span class="text-amber-400">#</span>
+            <span>Real-Time Digital Logic Analyzer</span>
+          </h2>
+          <p class="text-xs text-slate-400">Multi-channel logic waveform plotter capturing real-time edge triggers and state propagation.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="timingPlayPauseBtn" onclick="TimingAnalyzer.togglePlay()" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition">
+            PAUSE
+          </button>
+          <button onclick="TimingAnalyzer.clearWaveforms()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+            CLEAR
+          </button>
+          <button onclick="TimingAnalyzer.zoomIn()" class="p-1.5 rounded bg-slate-800 text-slate-300 hover:text-white text-xs" title="Zoom In">+</button>
+          <button onclick="TimingAnalyzer.zoomOut()" class="p-1.5 rounded bg-slate-800 text-slate-300 hover:text-white text-xs" title="Zoom Out">-</button>
+        </div>
+      </div>
+
+      <!-- Waveform Canvas -->
+      <div class="bg-slate-950 p-4 rounded-2xl border-2 border-slate-800 shadow-2xl relative">
+        <canvas id="timingCanvas" class="w-full h-[400px] block rounded-xl bg-[#030712]"></canvas>
+        <div class="flex items-center justify-between mt-3 text-xs font-mono text-slate-400 px-2">
+          <span>TIME DIVISION: <span id="timeScaleLabel">100ms / div</span></span>
+          <span class="text-emerald-400">● LIVE RUNNING</span>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 6. VIVA VOCE & QUIZ -->
+    <section id="view-viva" class="hidden p-4 sm:p-8 max-w-7xl mx-auto space-y-8">
+      <!-- Viva Section -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-bold font-tech text-white flex items-center space-x-2">
+            <span class="text-purple-400">#</span>
+            <span>Laboratory Viva Voce Q&A</span>
+          </h2>
+          <span class="text-xs font-mono text-slate-400">Oral Exam Preparation</span>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="vivaListContainer">
+          <!-- Populated dynamically with comprehensive questions -->
+        </div>
+      </div>
+
+      <!-- Interactive Knowledge Quiz -->
+      <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-2xl space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h3 class="text-lg font-bold font-tech text-white">Digital Electronics Flip-Flop Mastery Quiz</h3>
+            <p class="text-xs text-slate-400">Test your understanding of edge-triggering, race conditions, and excitation tables.</p>
+          </div>
+          <div class="bg-slate-950 px-4 py-2 rounded-xl border border-slate-800 text-right">
+            <span class="text-xs text-slate-400 block font-mono">YOUR SCORE</span>
+            <span id="quizScoreText" class="text-base font-bold text-emerald-400 font-mono">0 / 5</span>
+          </div>
+        </div>
+
+        <div id="quizContainer" class="space-y-6">
+          <!-- Injected via QuizManager -->
+        </div>
+
+        <div class="flex items-center justify-between pt-4 border-t border-slate-800">
+          <button onclick="QuizManager.resetQuiz()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
+            Reset Quiz
+          </button>
+          <button onclick="QuizManager.submitQuiz()" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg transition">
+            Submit & Verify Answers
+          </button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 7. SAVED CIRCUITS & CONFIGURATION -->
+    <section id="view-settings" class="hidden p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Local Circuit Save & Load -->
+        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow space-y-4">
+          <h3 class="text-lg font-bold font-tech text-white flex items-center space-x-2">
+            <span class="text-emerald-400">#</span>
+            <span>Saved Circuit Presets</span>
+          </h3>
+          <p class="text-xs text-slate-400">Save your active jumper wiring configurations and switch states locally to resume later.</p>
+          
+          <div class="flex space-x-2">
+            <input id="saveCircuitName" type="text" placeholder="Circuit Name (e.g. My JK Ripple Setup)" class="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+            <button onclick="StorageManager.saveCurrentCircuit()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition">
+              Save
+            </button>
+          </div>
+
+          <div class="space-y-2 pt-2">
+            <span class="text-xs font-mono font-bold text-slate-400">SAVED LOCAL PRESETS:</span>
+            <div id="savedCircuitsList" class="space-y-2 max-h-48 overflow-y-auto">
+              <!-- Injected by StorageManager -->
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-800 flex space-x-2">
+            <button onclick="StorageManager.exportToJSON()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">
+              Export Backup JSON
+            </button>
+            <label class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold cursor-pointer">
+              Import JSON
+              <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="StorageManager.importFromJSON(event)">
+            </label>
+          </div>
+        </div>
+
+        <!-- Hardware & Simulation Preferences -->
+        <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow space-y-4">
+          <h3 class="text-lg font-bold font-tech text-white flex items-center space-x-2">
+            <span class="text-cyan-400">#</span>
+            <span>Laboratory Engine Preferences</span>
+          </h3>
+          
+          <div class="space-y-4 text-xs">
+            <!-- Active Clock Edge -->
+            <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800/80">
+              <div>
+                <span class="font-bold text-slate-200 block">Clock Triggering Edge</span>
+                <span class="text-slate-400 text-[11px]">Choose whether flip-flops transition on Rising (Positive) or Falling (Negative) edge.</span>
+              </div>
+              <select id="clockEdgePref" onchange="SimEngine.setClockEdge(this.value)" class="bg-slate-900 text-emerald-400 font-mono border border-slate-700 rounded-lg px-2.5 py-1">
+                <option value="rising" selected>Rising Edge (↑)</option>
+                <option value="falling">Falling Edge (↓)</option>
+              </select>
+            </div>
+
+            <!-- Visual Theme -->
+            <div class="flex items-center justify-between p-3 bg-slate-950 rounded-xl border border-slate-800/80">
+              <div>
+                <span class="font-bold text-slate-200 block">Board Visual Style</span>
+                <span class="text-slate-400 text-[11px]">Select virtual PCB aesthetic overlay.</span>
+              </div>
+              <select id="themePref" onchange="applyBoardTheme(this.value)" class="bg-slate-900 text-cyan-400 font-mono border border-slate-700 rounded-lg px-2.5 py-1">
+                <option value="pcb-green" selected>Classic PCB Green</option>
+                <option value="pcb-blue">Modern Sapphire Blue</option>
+                <option value="pcb-black">Matte Black Pro</option>
+              </select>
+            </div>
+
+            <!-- Reset Factory Defaults -->
+            <div class="pt-2">
+              <button onclick="StorageManager.resetAllData()" class="px-4 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 text-xs font-semibold transition">
+                Reset All Saved Laboratory Data
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- JAVASCRIPT SIMULATION LOGIC CORE -->
+  <script>
+    /**
+     * DigiLab - Virtual Electronics Laboratory
+     * Decoupled Event-Driven Simulation Engine & Interactive Wire Router
+     */
+
+    // --- 1. SYNTHESIZED WEB AUDIO SOUND FX ---
+    const SoundFX = {
+      ctx: null,
+      enabled: true,
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+          }
+        }
+      },
+
+      toggle() {
+        this.enabled = !this.enabled;
+        document.getElementById('soundOnIcon').classList.toggle('hidden', !this.enabled);
+        document.getElementById('soundOffIcon').classList.toggle('hidden', this.enabled);
+        showToast(this.enabled ? "Synthesized Sound FX ON" : "Sound FX Muted", "info");
+      },
+
+      playSwitchClick() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(420, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(140, this.ctx.currentTime + 0.04);
+          gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.04);
+        } catch(e) {}
+      },
+
+      playWireSnap() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.06);
+          gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.06);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.06);
+        } catch(e) {}
+      },
+
+      playClockTick() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(1050, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.025);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.025);
+        } catch(e) {}
+      },
+
+      playBuzzer() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + 0.2);
+        } catch(e) {}
+      }
+    };
+
+
+    // --- 2. DIGITAL FLIP-FLOP SIMULATION ENGINE ---
+    const SimEngine = {
+      powered: true,
+      clockState: 0,
+      prevClockState: 0,
+      clockEdge: 'rising', // 'rising' or 'falling'
+      autoClockTimer: null,
+      autoClockRunning: false,
+      clockFreq: 1.0,
+
+      // Switch binary states (SW 1 to 8)
+      switches: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 },
+
+      // Internal Flip-Flop States
+      state: {
+        sr: { Q: 0, Q_bar: 1, stateText: 'HOLD' },
+        jk: { Q: 0, Q_bar: 1, stateText: 'RESET' },
+        d:  { Q: 0, Q_bar: 1, stateText: 'RESET' },
+        t:  { Q: 0, Q_bar: 1, stateText: 'HOLD' },
+        msjk: { masterQ: 0, slaveQ: 0, slaveQ_bar: 1, stateText: 'HOLD' }
+      },
+
+      init() {
+        this.updateSwitchUI();
+        this.evaluateCircuit();
+      },
+
+      togglePower() {
+        this.powered = !this.powered;
+        const btn = document.getElementById('masterPowerBtn');
+        const led = document.getElementById('masterPowerLed');
+        if (this.powered) {
+          btn.textContent = 'ON';
+          btn.className = 'px-2.5 py-1 text-xs font-semibold rounded bg-emerald-600 hover:bg-emerald-500 text-white shadow transition';
+          led.className = 'led-indicator green-led active';
+          showToast('Trainer 5V DC Supply Powered ON', 'success');
+        } else {
+          btn.textContent = 'OFF';
+          btn.className = 'px-2.5 py-1 text-xs font-semibold rounded bg-slate-700 text-slate-300 shadow transition';
+          led.className = 'led-indicator green-led';
+          if (this.autoClockRunning) this.toggleAutoClock();
+          showToast('Trainer Power Disconnected', 'warning');
+        }
+        this.evaluateCircuit();
+      },
+
+      setClockEdge(edge) {
+        this.clockEdge = edge;
+        showToast(`Clock Trigger set to ${edge === 'rising' ? 'Rising Edge (↑)' : 'Falling Edge (↓)'}`, 'info');
+      },
+
+      toggleSwitch(num) {
+        if (!this.powered) {
+          showToast('Switch power is OFF. Turn ON trainer power switch.', 'warning');
+          return;
+        }
+        this.switches[num] = this.switches[num] ? 0 : 1;
+        SoundFX.playSwitchClick();
+        this.updateSwitchUI();
+        this.evaluateCircuit();
+      },
+
+      updateSwitchUI() {
+        for (let i = 1; i <= 8; i++) {
+          const val = this.switches[i];
+          const toggleEl = document.getElementById(`swToggle_${i}`);
+          const ledEl = document.getElementById(`swLed_${i}`);
+          const valEl = document.getElementById(`swVal_${i}`);
+          if (toggleEl) toggleEl.classList.toggle('active', val === 1);
+          if (ledEl) ledEl.classList.toggle('active', val === 1);
+          if (valEl) {
+            valEl.textContent = val;
+            valEl.className = val ? 'text-[10px] font-mono font-bold text-emerald-400' : 'text-[10px] font-mono font-bold text-slate-400';
+          }
+        }
+      },
+
+      pulseClock() {
+        if (!this.powered) {
+          showToast('Master Power is OFF', 'warning');
+          return;
+        }
+        // Generate a 1-shot high clock pulse
+        SoundFX.playClockTick();
+        this.setClockSignal(1);
+        setTimeout(() => {
+          this.setClockSignal(0);
+        }, 150);
+      },
+
+      toggleAutoClock() {
+        if (!this.powered && !this.autoClockRunning) {
+          showToast('Turn ON trainer master power first.', 'warning');
+          return;
+        }
+        this.autoClockRunning = !this.autoClockRunning;
+        const btn = document.getElementById('autoClockToggleBtn');
+        if (this.autoClockRunning) {
+          btn.textContent = 'STOP';
+          btn.className = 'px-2.5 py-1 text-[11px] font-bold rounded bg-rose-600 hover:bg-rose-500 text-white';
+          const intervalMs = 1000 / (this.clockFreq * 2);
+          this.autoClockTimer = setInterval(() => {
+            if (!this.powered) {
+              this.toggleAutoClock();
+              return;
+            }
+            this.setClockSignal(this.clockState === 1 ? 0 : 1);
+          }, intervalMs);
+          showToast(`Auto Clock Generator Started (${this.clockFreq} Hz)`, 'info');
+        } else {
+          btn.textContent = 'START';
+          btn.className = 'px-2.5 py-1 text-[11px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-600/30';
+          clearInterval(this.autoClockTimer);
+          this.autoClockTimer = null;
+          this.setClockSignal(0);
+        }
+      },
+
+      setClockSignal(val) {
+        this.prevClockState = this.clockState;
+        this.clockState = val;
+
+        // UI feedback for clock LED
+        const clkLed = document.getElementById('clkStatusLed');
+        if (clkLed) {
+          clkLed.classList.toggle('active', val === 1);
+        }
+
+        // Edge detection
+        const isRising = (this.prevClockState === 0 && this.clockState === 1);
+        const isFalling = (this.prevClockState === 1 && this.clockState === 0);
+        const activeEdge = (this.clockEdge === 'rising' ? isRising : isFalling);
+
+        this.evaluateCircuit(activeEdge, isRising, isFalling);
+      },
+
+      // Query the resolved logic level connected to any input terminal
+      getTerminalValue(terminalId) {
+        if (!this.powered) return 0;
+        // Check if any jumper wire leads to this terminal
+        const sourceTerminalId = WireManager.getSourceForInput(terminalId);
+        if (!sourceTerminalId) {
+          // Floating input defaults:
+          // Active-low inputs (PRE, CLR) default to HIGH (1 = inactive) if unconnected
+          if (terminalId.endsWith('_PRE') || terminalId.endsWith('_CLR')) {
+            return 1;
+          }
+          return 0; // standard floating input = LOW
+        }
+
+        // Resolve value of source terminal
+        if (sourceTerminalId === 'PWR_VCC') return 1;
+        if (sourceTerminalId === 'PWR_GND') return 0;
+        if (sourceTerminalId === 'CLK_OUT') return this.clockState;
+        if (sourceTerminalId === 'CLK_NOT_OUT') return this.clockState === 1 ? 0 : 1;
+
+        // Switch outputs SW_OUT_1 to SW_OUT_8
+        if (sourceTerminalId.startsWith('SW_OUT_')) {
+          const swNum = parseInt(sourceTerminalId.replace('SW_OUT_', ''));
+          return this.switches[swNum] || 0;
+        }
+
+        // Flip-Flop outputs connected back into inputs
+        if (sourceTerminalId === 'SR_Q') return this.state.sr.Q;
+        if (sourceTerminalId === 'SR_Q_BAR') return this.state.sr.Q_bar;
+        if (sourceTerminalId === 'JK_Q') return this.state.jk.Q;
+        if (sourceTerminalId === 'JK_Q_BAR') return this.state.jk.Q_bar;
+        if (sourceTerminalId === 'D_Q') return this.state.d.Q;
+        if (sourceTerminalId === 'D_Q_BAR') return this.state.d.Q_bar;
+        if (sourceTerminalId === 'T_Q') return this.state.t.Q;
+        if (sourceTerminalId === 'T_Q_BAR') return this.state.t.Q_bar;
+        if (sourceTerminalId === 'MSJK_Q') return this.state.msjk.slaveQ;
+        if (sourceTerminalId === 'MSJK_Q_BAR') return this.state.msjk.slaveQ_bar;
+
+        return 0;
+      },
+
+      // Complete simulation loop
+      evaluateCircuit(activeEdge = false, isRising = false, isFalling = false) {
+        if (!this.powered) {
+          this.clearAllOutputs();
+          return;
+        }
+
+        // 1. SR FLIP-FLOP SIMULATION
+        const sr_S = this.getTerminalValue('SR_S');
+        const sr_R = this.getTerminalValue('SR_R');
+        const sr_ClkInput = this.getTerminalValue('SR_CLK');
+
+        // Clocked SR behavior:
+        if (sr_ClkInput === 1 || activeEdge) {
+          if (sr_S === 0 && sr_R === 0) {
+            this.state.sr.stateText = 'HOLD';
+          } else if (sr_S === 0 && sr_R === 1) {
+            this.state.sr.Q = 0;
+            this.state.sr.Q_bar = 1;
+            this.state.sr.stateText = 'RESET';
+          } else if (sr_S === 1 && sr_R === 0) {
+            this.state.sr.Q = 1;
+            this.state.sr.Q_bar = 0;
+            this.state.sr.stateText = 'SET';
+          } else if (sr_S === 1 && sr_R === 1) {
+            this.state.sr.Q = 1;
+            this.state.sr.Q_bar = 1; // Invalid / Race condition
+            this.state.sr.stateText = 'INVALID (S=R=1)';
+            SoundFX.playBuzzer();
+          }
+        }
+        const srStatus = document.getElementById('srStateStatus');
+        if (srStatus) srStatus.textContent = this.state.sr.stateText;
+
+
+        // 2. JK FLIP-FLOP SIMULATION (with Asynchronous Active-LOW PRE / CLR)
+        const jk_PRE = this.getTerminalValue('JK_PRE');
+        const jk_CLR = this.getTerminalValue('JK_CLR');
+        const jk_J   = this.getTerminalValue('JK_J');
+        const jk_K   = this.getTerminalValue('JK_K');
+
+        if (jk_PRE === 0 && jk_CLR === 1) {
+          // Asynchronous PRESET overrides clock
+          this.state.jk.Q = 1;
+          this.state.jk.Q_bar = 0;
+          this.state.jk.stateText = 'ASYNC PRESET';
+        } else if (jk_PRE === 1 && jk_CLR === 0) {
+          // Asynchronous CLEAR overrides clock
+          this.state.jk.Q = 0;
+          this.state.jk.Q_bar = 1;
+          this.state.jk.stateText = 'ASYNC CLEAR';
+        } else if (jk_PRE === 0 && jk_CLR === 0) {
+          this.state.jk.Q = 1;
+          this.state.jk.Q_bar = 1;
+          this.state.jk.stateText = 'INVALID (PRE=CLR=0)';
+        } else if (activeEdge) {
+          // Synchronous Clock Edge Triggered Logic
+          if (jk_J === 0 && jk_K === 0) {
+            this.state.jk.stateText = 'HOLD';
+          } else if (jk_J === 0 && jk_K === 1) {
+            this.state.jk.Q = 0;
+            this.state.jk.Q_bar = 1;
+            this.state.jk.stateText = 'RESET';
+          } else if (jk_J === 1 && jk_K === 0) {
+            this.state.jk.Q = 1;
+            this.state.jk.Q_bar = 0;
+            this.state.jk.stateText = 'SET';
+          } else if (jk_J === 1 && jk_K === 1) {
+            // TOGGLE
+            const prevQ = this.state.jk.Q;
+            this.state.jk.Q = prevQ === 1 ? 0 : 1;
+            this.state.jk.Q_bar = this.state.jk.Q === 1 ? 0 : 1;
+            this.state.jk.stateText = 'TOGGLED';
+          }
+        }
+        const jkStatus = document.getElementById('jkStateStatus');
+        if (jkStatus) jkStatus.textContent = this.state.jk.stateText;
+
+
+        // 3. D FLIP-FLOP SIMULATION
+        const d_PRE = this.getTerminalValue('D_PRE');
+        const d_CLR = this.getTerminalValue('D_CLR');
+        const d_D   = this.getTerminalValue('D_D');
+
+        if (d_PRE === 0 && d_CLR === 1) {
+          this.state.d.Q = 1;
+          this.state.d.Q_bar = 0;
+          this.state.d.stateText = 'ASYNC PRESET';
+        } else if (d_PRE === 1 && d_CLR === 0) {
+          this.state.d.Q = 0;
+          this.state.d.Q_bar = 1;
+          this.state.d.stateText = 'ASYNC CLEAR';
+        } else if (activeEdge) {
+          this.state.d.Q = d_D;
+          this.state.d.Q_bar = d_D === 1 ? 0 : 1;
+          this.state.d.stateText = d_D === 1 ? 'LATCH HIGH (1)' : 'LATCH LOW (0)';
+        }
+        const dStatus = document.getElementById('dStateStatus');
+        if (dStatus) dStatus.textContent = this.state.d.stateText;
+
+
+        // 4. T FLIP-FLOP SIMULATION
+        const t_PRE = this.getTerminalValue('T_PRE');
+        const t_CLR = this.getTerminalValue('T_CLR');
+        const t_T   = this.getTerminalValue('T_T');
+
+        if (t_PRE === 0 && t_CLR === 1) {
+          this.state.t.Q = 1;
+          this.state.t.Q_bar = 0;
+          this.state.t.stateText = 'ASYNC PRESET';
+        } else if (t_PRE === 1 && t_CLR === 0) {
+          this.state.t.Q = 0;
+          this.state.t.Q_bar = 1;
+          this.state.t.stateText = 'ASYNC CLEAR';
+        } else if (activeEdge) {
+          if (t_T === 1) {
+            const prevT_Q = this.state.t.Q;
+            this.state.t.Q = prevT_Q === 1 ? 0 : 1;
+            this.state.t.Q_bar = this.state.t.Q === 1 ? 0 : 1;
+            this.state.t.stateText = 'TOGGLED';
+          } else {
+            this.state.t.stateText = 'HOLD';
+          }
+        }
+        const tStatus = document.getElementById('tStateStatus');
+        if (tStatus) tStatus.textContent = this.state.t.stateText;
+
+
+        // 5. MASTER-SLAVE JK SIMULATION (Dual Stage)
+        const ms_PRE = this.getTerminalValue('MSJK_PRE');
+        const ms_CLR = this.getTerminalValue('MSJK_CLR');
+        const ms_J   = this.getTerminalValue('MSJK_J');
+        const ms_K   = this.getTerminalValue('MSJK_K');
+
+        if (ms_PRE === 0) {
+          this.state.msjk.masterQ = 1;
+          this.state.msjk.slaveQ = 1;
+          this.state.msjk.slaveQ_bar = 0;
+        } else if (ms_CLR === 0) {
+          this.state.msjk.masterQ = 0;
+          this.state.msjk.slaveQ = 0;
+          this.state.msjk.slaveQ_bar = 1;
+        } else {
+          // Master samples on clock HIGH
+          if (this.clockState === 1) {
+            if (ms_J === 0 && ms_K === 1) this.state.msjk.masterQ = 0;
+            else if (ms_J === 1 && ms_K === 0) this.state.msjk.masterQ = 1;
+            else if (ms_J === 1 && ms_K === 1) {
+              this.state.msjk.masterQ = this.state.msjk.slaveQ === 1 ? 0 : 1;
+            }
+          }
+          // Slave transfers to output on Clock Falling Edge (1 -> 0)
+          if (isFalling) {
+            this.state.msjk.slaveQ = this.state.msjk.masterQ;
+            this.state.msjk.slaveQ_bar = this.state.msjk.slaveQ === 1 ? 0 : 1;
+          }
+        }
+        const masterStatusEl = document.getElementById('msjkMasterStatus');
+        const slaveStatusEl = document.getElementById('msjkSlaveStatus');
+        if (masterStatusEl) masterStatusEl.textContent = `Qm=${this.state.msjk.masterQ}`;
+        if (slaveStatusEl) slaveStatusEl.textContent = `Qs=${this.state.msjk.slaveQ}`;
+
+
+        // 6. UPDATE OUTPUT LED INDICATORS (L1 - L8)
+        for (let i = 1; i <= 8; i++) {
+          const ledInVal = this.getTerminalValue(`LED_IN_${i}`);
+          const ledEl = document.getElementById(`outLed_${i}`);
+          if (ledEl) {
+            ledEl.classList.toggle('active', ledInVal === 1);
+          }
+        }
+
+        // 7. UPDATE 7-SEGMENT BCD HEX DECODER
+        const bcdA = this.getTerminalValue('BCD_A');
+        const bcdB = this.getTerminalValue('BCD_B');
+        const bcdC = this.getTerminalValue('BCD_C');
+        const bcdD = this.getTerminalValue('BCD_D');
+        const hexVal = (bcdD << 3) | (bcdC << 2) | (bcdB << 1) | bcdA;
+        const segDigit = document.getElementById('sevenSegmentDigit');
+        if (segDigit) {
+          segDigit.textContent = hexVal.toString(16).toUpperCase();
+        }
+
+        // 8. PUSH SAMPLE TO TIMING ANALYZER
+        TimingAnalyzer.recordSample({
+          clk: this.clockState,
+          j: jk_J,
+          k: jk_K,
+          d: d_D,
+          t: t_T,
+          q: this.state.jk.Q,
+          q_bar: this.state.jk.Q_bar
+        });
+
+        // 9. RE-HIGHLIGHT ACTIVE EXPERIMENT TRUTH TABLE ROW
+        updateLiveTruthTableHighlight();
+      },
+
+      clearAllOutputs() {
+        for (let i = 1; i <= 8; i++) {
+          const ledEl = document.getElementById(`outLed_${i}`);
+          if (ledEl) ledEl.classList.remove('active');
+        }
+        const segDigit = document.getElementById('sevenSegmentDigit');
+        if (segDigit) segDigit.textContent = '-';
+      }
+    };
+
+
+    // --- 3. JUMPER WIRE MANAGER & CONNECTION ROUTER ---
+    const WireManager = {
+      selectedTerminal: null,
+      activeColor: '#ef4444',
+      wires: [], // [{ id, fromId, toId, color }]
+      undoStack: [],
+      redoStack: [],
+
+      init() {
+        this.attachTerminalListeners();
+        this.attachColorPaletteListeners();
+        window.addEventListener('resize', () => this.redrawAllWires());
+      },
+
+      attachColorPaletteListeners() {
+        document.querySelectorAll('.wire-color-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.wire-color-btn').forEach(b => b.classList.remove('ring-2', 'ring-white', 'ring-offset-1', 'ring-offset-slate-950'));
+            btn.classList.add('ring-2', 'ring-white', 'ring-offset-1', 'ring-offset-slate-950');
+            this.activeColor = btn.getAttribute('data-color');
+            SoundFX.playSwitchClick();
+          });
+        });
+      },
+
+      attachTerminalListeners() {
+        document.querySelectorAll('.terminal-touch').forEach(term => {
+          term.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.handleTerminalClick(term);
+          });
+        });
+
+        // Deselect terminal when clicking outside
+        document.addEventListener('click', () => {
+          if (this.selectedTerminal) {
+            this.deselectTerminal();
+          }
+        });
+      },
+
+      handleTerminalClick(termEl) {
+        const termId = termEl.getAttribute('data-id');
+        const termType = termEl.getAttribute('data-type');
+        const termName = termEl.getAttribute('data-name') || termId;
+
+        // If no terminal is currently selected, pick this as starting point
+        if (!this.selectedTerminal) {
+          this.selectedTerminal = { id: termId, type: termType, name: termName, el: termEl };
+          termEl.classList.add('terminal-selected');
+          SoundFX.playSwitchClick();
+          document.getElementById('inspectorText').innerHTML = 
+            `Selected <span class="text-emerald-400 font-bold">${termName}</span>. Now tap destination terminal.`;
+          return;
+        }
+
+        // If same terminal clicked again, cancel selection
+        if (this.selectedTerminal.id === termId) {
+          this.deselectTerminal();
+          return;
+        }
+
+        // Connection validation:
+        const t1 = this.selectedTerminal;
+        const t2 = { id: termId, type: termType, name: termName, el: termEl };
+
+        // Rule 1: Cannot connect two outputs together (prevents driver collision)
+        if (t1.type === 'output' && t2.type === 'output') {
+          SoundFX.playBuzzer();
+          showToast(`Cannot connect output ${t1.name} directly to output ${t2.name}!`, 'error');
+          this.deselectTerminal();
+          return;
+        }
+
+        // Rule 2: Cannot connect two power rails to each other (short circuit prevention)
+        if ((t1.type === 'vcc' && t2.type === 'gnd') || (t1.type === 'gnd' && t2.type === 'vcc')) {
+          SoundFX.playBuzzer();
+          showToast(`Short circuit hazard! Cannot bridge +5V VCC directly to GND.`, 'error');
+          this.deselectTerminal();
+          return;
+        }
+
+        // Rule 3: Check if identical wire already exists
+        const exists = this.wires.some(w => 
+          (w.fromId === t1.id && w.toId === t2.id) || (w.fromId === t2.id && w.toId === t1.id)
+        );
+        if (exists) {
+          showToast(`A jumper wire already connects these two terminals.`, 'info');
+          this.deselectTerminal();
+          return;
+        }
+
+        // Determine correct flow: from Driver/Output to Input/Sink
+        let fromTerm = t1;
+        let toTerm = t2;
+        if (t2.type === 'output' || t2.type === 'vcc' || t2.type === 'gnd') {
+          fromTerm = t2;
+          toTerm = t1;
+        }
+
+        // Create the connection
+        const newWire = {
+          id: 'wire_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+          fromId: fromTerm.id,
+          toId: toTerm.id,
+          color: this.activeColor
+        };
+
+        this.wires.push(newWire);
+        this.undoStack.push({ action: 'add', wire: newWire });
+        this.redoStack = [];
+
+        SoundFX.playWireSnap();
+        showToast(`Connected ${fromTerm.name} → ${toTerm.name}`, 'success');
+        this.deselectTerminal();
+        this.redrawAllWires();
+        SimEngine.evaluateCircuit();
+      },
+
+      deselectTerminal() {
+        if (this.selectedTerminal && this.selectedTerminal.el) {
+          this.selectedTerminal.el.classList.remove('terminal-selected');
+        }
+        this.selectedTerminal = null;
+        document.getElementById('inspectorText').textContent = 'Ready. Click/tap any terminal to begin jumper wiring.';
+      },
+
+      getSourceForInput(inputId) {
+        const wire = this.wires.find(w => w.toId === inputId);
+        return wire ? wire.fromId : null;
+      },
+
+      removeWire(wireId) {
+        const index = this.wires.findIndex(w => w.id === wireId);
+        if (index !== -1) {
+          const removed = this.wires.splice(index, 1)[0];
+          this.undoStack.push({ action: 'remove', wire: removed });
+          SoundFX.playWireSnap();
+          this.redrawAllWires();
+          SimEngine.evaluateCircuit();
+          showToast('Jumper wire removed', 'info');
+        }
+      },
+
+      undo() {
+        if (this.undoStack.length === 0) {
+          showToast('Nothing to undo', 'info');
+          return;
+        }
+        const last = this.undoStack.pop();
+        if (last.action === 'add') {
+          this.wires = this.wires.filter(w => w.id !== last.wire.id);
+          this.redoStack.push(last);
+        } else if (last.action === 'remove') {
+          this.wires.push(last.wire);
+          this.redoStack.push(last);
+        }
+        SoundFX.playWireSnap();
+        this.redrawAllWires();
+        SimEngine.evaluateCircuit();
+      },
+
+      redo() {
+        if (this.redoStack.length === 0) {
+          showToast('Nothing to redo', 'info');
+          return;
+        }
+        const next = this.redoStack.pop();
+        if (next.action === 'add') {
+          this.wires.push(next.wire);
+          this.undoStack.push(next);
+        } else if (next.action === 'remove') {
+          this.wires = this.wires.filter(w => w.id !== next.wire.id);
+          this.undoStack.push(next);
+        }
+        SoundFX.playWireSnap();
+        this.redrawAllWires();
+        SimEngine.evaluateCircuit();
+      },
+
+      clearAllWires() {
+        if (this.wires.length === 0) return;
+        this.undoStack.push({ action: 'clear', wires: [...this.wires] });
+        this.wires = [];
+        SoundFX.playWireSnap();
+        this.redrawAllWires();
+        SimEngine.evaluateCircuit();
+        showToast('All jumper wires removed from trainer board.', 'info');
+      },
+
+      redrawAllWires() {
+        const svg = document.getElementById('wireCanvas');
+        if (!svg) return;
+        const board = document.getElementById('trainerBoard');
+        if (!board) return;
+        const boardRect = board.getBoundingClientRect();
+
+        // Clear existing SVG paths
+        svg.innerHTML = '';
+
+        // Add defs for drop shadows and endcaps
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        defs.innerHTML = `
+          <filter id="wireShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="2" dy="5" stdDeviation="3" flood-color="#000" flood-opacity="0.6"/>
+          </filter>
+        `;
+        svg.appendChild(defs);
+
+        this.wires.forEach(wire => {
+          const el1 = document.querySelector(`[data-id="${wire.fromId}"]`);
+          const el2 = document.querySelector(`[data-id="${wire.toId}"]`);
+          if (!el1 || !el2) return;
+
+          const r1 = el1.getBoundingClientRect();
+          const r2 = el2.getBoundingClientRect();
+
+          // Calculate center points relative to board
+          const x1 = (r1.left + r1.width / 2) - boardRect.left + board.scrollLeft;
+          const y1 = (r1.top + r1.height / 2) - boardRect.top + board.scrollTop;
+          const x2 = (r2.left + r2.width / 2) - boardRect.left + board.scrollLeft;
+          const y2 = (r2.top + r2.height / 2) - boardRect.top + board.scrollTop;
+
+          // Realistic cable sag / curve
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const sag = Math.min(80, Math.max(25, dist * 0.25));
+
+          const cx1 = x1 + dx * 0.25;
+          const cy1 = y1 + sag;
+          const cx2 = x1 + dx * 0.75;
+          const cy2 = y2 + sag;
+
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`);
+          path.setAttribute('stroke', wire.color);
+          path.setAttribute('stroke-width', '4');
+          path.setAttribute('fill', 'none');
+          path.setAttribute('stroke-linecap', 'round');
+          path.setAttribute('filter', 'url(#wireShadow)');
+          path.classList.add('wire-path');
+          path.style.pointerEvents = 'stroke';
+
+          // Click wire to remove
+          path.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.removeWire(wire.id);
+          });
+
+          // Wire End Terminals
+          const c1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          c1.setAttribute('cx', x1);
+          c1.setAttribute('cy', y1);
+          c1.setAttribute('r', '3');
+          c1.setAttribute('fill', '#fff');
+
+          const c2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          c2.setAttribute('cx', x2);
+          c2.setAttribute('cy', y2);
+          c2.setAttribute('r', '3');
+          c2.setAttribute('fill', '#fff');
+
+          svg.appendChild(path);
+          svg.appendChild(c1);
+          svg.appendChild(c2);
+        });
+      }
+    };
+
+
+    // --- 4. BREADBOARD SIMULATOR MANAGER ---
+    const BreadboardSim = {
+      mountedIC: '74LS76',
+      selectedHole: null,
+
+      mountIC(type) {
+        this.mountedIC = type;
+        const label = document.getElementById('bbMountedLabel');
+        const nameEl = document.getElementById('bbICName');
+        const guideEl = document.getElementById('bbPinGuide');
+        SoundFX.playWireSnap();
+
+        if (type === '74LS76') {
+          if (label) label.textContent = 'Active IC: 74LS76 Dual JK Flip-Flop';
+          if (nameEl) nameEl.textContent = 'SN74LS76N • DUAL JK FLIP-FLOP';
+          if (guideEl) {
+            guideEl.innerHTML = `
+              <div>Pin 1: 1CLK (Clock Input 1)</div>
+              <div>Pin 2: 1PRE (Active-LOW Preset)</div>
+              <div>Pin 3: 1CLR (Active-LOW Clear)</div>
+              <div>Pin 4: 1J (J Logic Input)</div>
+              <div>Pin 5: VCC (+5V Power)</div>
+              <div>Pin 15: 1Q (Output Q) | Pin 14: 1Q̅ (Output Q̅)</div>
+              <div>Pin 16: 1K (K Logic Input) | Pin 13: GND</div>
+            `;
+          }
+        } else {
+          if (label) label.textContent = 'Active IC: 74LS74 Dual D Flip-Flop';
+          if (nameEl) nameEl.textContent = 'SN74LS74N • DUAL D FLIP-FLOP';
+          if (guideEl) {
+            guideEl.innerHTML = `
+              <div>Pin 1: 1CLR (Active-LOW Clear)</div>
+              <div>Pin 2: 1D (Data Input)</div>
+              <div>Pin 3: 1CLK (Clock Input)</div>
+              <div>Pin 4: 1PRE (Active-LOW Preset)</div>
+              <div>Pin 5: 1Q (Output Q) | Pin 6: 1Q̅ (Output Q̅)</div>
+              <div>Pin 7: GND (Ground) | Pin 14: VCC (+5V)</div>
+            `;
+          }
+        }
+        showToast(`Mounted ${type} IC onto breadboard center trough.`, 'info');
+      },
+
+      handleHoleClick(holeId) {
+        SoundFX.playSwitchClick();
+        showToast(`Breadboard Tie Point [${holeId}] touched.`, 'info');
+      }
+    };
+
+
+    // --- 5. TIMING ANALYZER (LIVE OSCILLOSCOPE) ---
+    const TimingAnalyzer = {
+      canvas: null,
+      ctx: null,
+      running: true,
+      timeScale: 100, // ms
+      buffer: [], // Max 300 points
+      maxPoints: 300,
+
+      init() {
+        this.canvas = document.getElementById('timingCanvas');
+        if (!this.canvas) return;
+        this.ctx = this.canvas.getContext('2d');
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.loop();
+      },
+
+      resize() {
+        if (!this.canvas) return;
+        this.canvas.width = this.canvas.clientWidth * window.devicePixelRatio || 800;
+        this.canvas.height = this.canvas.clientHeight * window.devicePixelRatio || 400;
+      },
+
+      togglePlay() {
+        this.running = !this.running;
+        const btn = document.getElementById('timingPlayPauseBtn');
+        if (btn) {
+          btn.textContent = this.running ? 'PAUSE' : 'RESUME';
+          btn.className = this.running ? 
+            'px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition' :
+            'px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition';
+        }
+      },
+
+      clearWaveforms() {
+        this.buffer = [];
+        showToast('Timing diagram memory cleared.', 'info');
+      },
+
+      zoomIn() {
+        this.timeScale = Math.max(25, this.timeScale - 25);
+        document.getElementById('timeScaleLabel').textContent = `${this.timeScale}ms / div`;
+      },
+
+      zoomOut() {
+        this.timeScale = Math.min(250, this.timeScale + 25);
+        document.getElementById('timeScaleLabel').textContent = `${this.timeScale}ms / div`;
+      },
+
+      recordSample(data) {
+        if (!this.running) return;
+        this.buffer.push({
+          time: Date.now(),
+          ...data
+        });
+        if (this.buffer.length > this.maxPoints) {
+          this.buffer.shift();
+        }
+      },
+
+      loop() {
+        requestAnimationFrame(() => this.loop());
+        if (!this.ctx || !this.canvas) return;
+
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const ctx = this.ctx;
+
+        // Clear background
+        ctx.fillStyle = '#030712';
+        ctx.fillRect(0, 0, w, h);
+
+        // Grid lines
+        ctx.strokeStyle = '#111827';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < w; x += 40) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+        for (let y = 0; y < h; y += 40) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+
+        // Channels definition
+        const channels = [
+          { name: 'CLK',  key: 'clk',   color: '#f59e0b', yBase: 70 },
+          { name: 'J/S/D',key: 'j',     color: '#38bdf8', yBase: 150 },
+          { name: 'K/R',  key: 'k',     color: '#818cf8', yBase: 230 },
+          { name: 'Q',    key: 'q',     color: '#10b981', yBase: 310 },
+          { name: 'Q̅',    key: 'q_bar', color: '#f43f5e', yBase: 380 }
+        ];
+
+        const stepX = w / this.maxPoints;
+
+        channels.forEach(ch => {
+          // Label
+          ctx.fillStyle = ch.color;
+          ctx.font = 'bold 12px "Fira Code", monospace';
+          ctx.fillText(ch.name, 15, ch.yBase - 30);
+
+          // Zero reference line
+          ctx.strokeStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.moveTo(60, ch.yBase);
+          ctx.lineTo(w, ch.yBase);
+          ctx.stroke();
+
+          // Waveform
+          if (this.buffer.length > 1) {
+            ctx.strokeStyle = ch.color;
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+
+            for (let i = 0; i < this.buffer.length; i++) {
+              const pt = this.buffer[i];
+              const val = pt[ch.key] || 0;
+              const x = 60 + i * stepX;
+              const y = ch.yBase - (val * 24);
+
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                const prevPt = this.buffer[i - 1];
+                const prevVal = prevPt[ch.key] || 0;
+                const prevX = 60 + (i - 1) * stepX;
+                const prevY = ch.yBase - (prevVal * 24);
+
+                // Square logic step
+                ctx.lineTo(x, prevY);
+                ctx.lineTo(x, y);
+              }
+            }
+            ctx.stroke();
+          }
+        });
+      }
+    };
+
+
+    // --- 6. GUIDED EXPERIMENTS & OBSERVATION TABLE SYSTEM ---
+    const ExperimentData = {
+      sr: {
+        title: 'SR (Set-Reset) Flip-Flop Truth Table Verification',
+        aim: 'To construct and verify the truth table of a Clocked SR Flip-Flop using logic gates and virtual trainer kit.',
+        apparatus: 'Virtual Trainer Kit DL-7400, DC 5V Power Supply, Clock Pulser, Logic Input Switches, Logic Output LEDs.',
+        theory: 'An SR Flip-Flop is a basic bistable digital multivibrator with two inputs: S (Set) and R (Reset). When S=1 and R=0, the flip-flop sets Q=1. When S=0 and R=1, it resets Q=0. When S=0 and R=0, it holds its previous state. The condition S=1, R=1 produces an indeterminate/forbidden condition where Q=Q̅=1.',
+        charEq: 'Q(n+1) = S + R̅ · Q(n) [Condition: S·R = 0]',
+        truthTable: [
+          { clk: '↑', s: 0, r: 0, q: 'Q(n)', qb: 'Q̅(n)', state: 'No Change (Hold)' },
+          { clk: '↑', s: 0, r: 1, q: '0',    qb: '1',     state: 'Reset' },
+          { clk: '↑', s: 1, r: 0, q: '1',    qb: '0',     state: 'Set' },
+          { clk: '↑', s: 1, r: 1, q: '1*',   qb: '1*',    state: 'Invalid / Forbidden' }
+        ]
+      },
+      jk: {
+        title: 'JK Flip-Flop (Universal) Truth Table Verification',
+        aim: 'To verify the working truth table of an edge-triggered JK Flip-Flop (IC 74LS76) with Asynchronous PRESET and CLEAR.',
+        apparatus: 'Virtual Trainer Kit, IC 74LS76 Dual JK Flip-Flop, Jumper Wires, Pulse Generator.',
+        theory: 'The JK flip-flop eliminates the invalid state of the SR flip-flop. When J=1 and K=1 with an active clock transition, the output toggles (Q(n+1) = Q̅(n)). Active-low PRESET forces Q=1, and CLEAR forces Q=0 asynchronously regardless of the clock input.',
+        charEq: 'Q(n+1) = J · Q̅(n) + K̅ · Q(n)',
+        truthTable: [
+          { clk: '↑', j: 0, k: 0, q: 'Q(n)', qb: 'Q̅(n)', state: 'Memory Hold' },
+          { clk: '↑', j: 0, k: 1, q: '0',    qb: '1',     state: 'Reset State' },
+          { clk: '↑', j: 1, k: 0, q: '1',    qb: '0',     state: 'Set State' },
+          { clk: '↑', j: 1, k: 1, q: 'Q̅(n)', qb: 'Q(n)', state: 'Toggle Mode' }
+        ]
+      },
+      d: {
+        title: 'D (Data / Delay) Flip-Flop Characterization',
+        aim: 'To configure and test the IC 74LS74 positive-edge triggered D Flip-Flop as a single-bit digital latch.',
+        apparatus: 'Virtual Trainer Kit, IC 74LS74 D-Latch, Logic Switches, Output LEDs.',
+        theory: 'The D flip-flop guarantees that the next state Q(n+1) equals the input D at the arrival of the active clock edge. It eliminates any potential invalid or ambiguous conditions and acts as a pure binary memory cell.',
+        charEq: 'Q(n+1) = D',
+        truthTable: [
+          { clk: '↑', d: 0, q: '0', qb: '1', state: 'Reset (Latching 0)' },
+          { clk: '↑', d: 1, q: '1', qb: '0', state: 'Set (Latching 1)' }
+        ]
+      },
+      t: {
+        title: 'T (Toggle) Flip-Flop & Binary Frequency Divider',
+        aim: 'To verify the truth table and toggle frequency division characteristics of a T Flip-Flop.',
+        apparatus: 'Virtual Trainer Kit DL-7400, Auto Clock Pulser, LED Indicators.',
+        theory: 'A T flip-flop changes its state on each clock edge when T=1. When T=0, it holds its current state. By connecting the output of one T flip-flop to the clock of the next, an asynchronous binary ripple counter is created.',
+        charEq: 'Q(n+1) = T ⊕ Q(n)',
+        truthTable: [
+          { clk: '↑', t: 0, q: 'Q(n)', qb: 'Q̅(n)', state: 'Hold (No Toggle)' },
+          { clk: '↑', t: 1, q: 'Q̅(n)', qb: 'Q(n)', state: 'Toggle Mode' }
+        ]
+      },
+      msjk: {
+        title: 'Master-Slave JK Flip-Flop Pulse-Triggering Verification',
+        aim: 'To study the elimination of race-around conditions using a Master-Slave JK Flip-Flop.',
+        apparatus: 'Virtual Trainer Kit DL-7400, Clock Generator with Inverter, Dual-Stage Latch.',
+        theory: 'In level-triggered JK flip-flops where J=1, K=1, and clock pulse width tp > propagation delay tpd, the output oscillates uncontrollably (race-around). The Master-Slave topology uses two cascading flip-flops controlled by opposite clock phases, ensuring output changes strictly on the clock falling edge.',
+        charEq: 'Q(n+1) = J · Q̅(n) + K̅ · Q(n) [Glitch-Free Pulse Triggered]',
+        truthTable: [
+          { clk: '1 / ↓', j: 0, k: 0, q: 'Q(n)', qb: 'Q̅(n)', state: 'Hold State' },
+          { clk: '1 / ↓', j: 0, k: 1, q: '0',    qb: '1',     state: 'Reset' },
+          { clk: '1 / ↓', j: 1, k: 0, q: '1',    qb: '0',     state: 'Set' },
+          { clk: '1 / ↓', j: 1, k: 1, q: 'Q̅(n)', qb: 'Q(n)', state: 'Race-Free Toggle' }
+        ]
+      }
+    };
+
+    let activeExpKey = 'sr';
+    let observationRows = [];
+
+    function renderExperiment(key) {
+      activeExpKey = key;
+      const data = ExperimentData[key];
+      if (!data) return;
+
+      // Update nav styling
+      document.querySelectorAll('.exp-nav-btn').forEach(btn => {
+        btn.className = 'exp-nav-btn px-4 py-2 rounded-xl text-xs font-bold font-mono bg-slate-900 text-slate-400 hover:text-white';
+      });
+      const activeBtn = document.getElementById(`expTab_${key}`);
+      if (activeBtn) {
+        activeBtn.className = 'exp-nav-btn px-4 py-2 rounded-xl text-xs font-bold font-mono bg-emerald-600 text-white';
+      }
+
+      const container = document.getElementById('experimentContainer');
+      container.innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Experiment Details & Theory (Cols 1-2) -->
+          <div class="lg:col-span-2 space-y-5">
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-4">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono font-bold text-emerald-400 bg-emerald-950 px-3 py-1 rounded border border-emerald-800/50">LABORATORY EXPERIMENT</span>
+                <span class="text-xs font-mono text-slate-400">Characteristic Eq: <strong class="text-white">${data.charEq}</strong></span>
+              </div>
+              <h2 class="text-2xl font-bold font-tech text-white">${data.title}</h2>
+              <div class="space-y-2 text-xs text-slate-300 leading-relaxed">
+                <div><strong class="text-emerald-400">AIM:</strong> ${data.aim}</div>
+                <div><strong class="text-emerald-400">APPARATUS:</strong> ${data.apparatus}</div>
+                <div><strong class="text-emerald-400">THEORY:</strong> ${data.theory}</div>
+              </div>
+            </div>
+
+            <!-- Interactive Live Truth Table -->
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold font-tech text-white">THEORETICAL TRUTH TABLE (LIVE HIGHLIGHTED)</h3>
+                <span class="text-[11px] font-mono text-emerald-400">● Active live condition indicated in green</span>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs font-mono border-collapse" id="liveTruthTable">
+                  <thead>
+                    <tr class="bg-slate-950 text-slate-400 border-b border-slate-800">
+                      <th class="p-3">CLK</th>
+                      ${key === 'sr' ? '<th class="p-3">S</th><th class="p-3">R</th>' : ''}
+                      ${key === 'jk' || key === 'msjk' ? '<th class="p-3">J</th><th class="p-3">K</th>' : ''}
+                      ${key === 'd' ? '<th class="p-3">D</th>' : ''}
+                      ${key === 't' ? '<th class="p-3">T</th>' : ''}
+                      <th class="p-3">Q (Next)</th>
+                      <th class="p-3">Q̅ (Next)</th>
+                      <th class="p-3">State Summary</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-800">
+                    ${data.truthTable.map((row, idx) => `
+                      <tr id="ttRow_${idx}" class="transition-colors duration-150">
+                        <td class="p-3 text-amber-400 font-bold">${row.clk}</td>
+                        ${row.s !== undefined ? `<td class="p-3">${row.s}</td><td class="p-3">${row.r}</td>` : ''}
+                        ${row.j !== undefined ? `<td class="p-3">${row.j}</td><td class="p-3">${row.k}</td>` : ''}
+                        ${row.d !== undefined ? `<td class="p-3">${row.d}</td>` : ''}
+                        ${row.t !== undefined ? `<td class="p-3">${row.t}</td>` : ''}
+                        <td class="p-3 text-emerald-400 font-bold">${row.q}</td>
+                        <td class="p-3 text-emerald-400 font-bold">${row.qb}</td>
+                        <td class="p-3 text-slate-300">${row.state}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interactive Observation Table & Export (Col 3) -->
+          <div class="space-y-5">
+            <div class="bg-slate-900 p-6 rounded-2xl border border-slate-800 space-y-4">
+              <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold font-tech text-white">OBSERVATION LOG SHEET</h3>
+                <span id="obsCountBadge" class="text-xs font-mono text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded">${observationRows.length} Logged</span>
+              </div>
+              <p class="text-xs text-slate-400">Record actual state observations directly from virtual trainer kit simulation.</p>
+
+              <div class="flex space-x-2">
+                <button onclick="recordObservation()" class="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center justify-center space-x-1.5 shadow">
+                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  <span>Log Current Output</span>
+                </button>
+                <button onclick="exportObservationCSV()" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition" title="Export CSV Report">
+                  CSV
+                </button>
+                <button onclick="clearObservations()" class="px-3 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-900 text-rose-300 text-xs font-semibold transition" title="Clear Sheet">
+                  Clear
+                </button>
+              </div>
+
+              <!-- Recorded Observation Table -->
+              <div class="max-h-64 overflow-y-auto border border-slate-800 rounded-xl">
+                <table class="w-full text-left text-xs font-mono border-collapse" id="obsTable">
+                  <thead>
+                    <tr class="bg-slate-950 text-slate-400 border-b border-slate-800">
+                      <th class="p-2">#</th>
+                      <th class="p-2">Inputs</th>
+                      <th class="p-2">Q</th>
+                      <th class="p-2">Q̅</th>
+                      <th class="p-2">State</th>
+                    </tr>
+                  </thead>
+                  <tbody id="obsTableBody" class="divide-y divide-slate-800">
+                    ${renderObservationRows()}
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="pt-2">
+                <button onclick="quickAutoWireDemo('${key}')" class="w-full py-2 rounded-xl bg-cyan-950 hover:bg-cyan-900 border border-cyan-800/60 text-cyan-300 text-xs font-semibold transition">
+                  ⚡ Auto-Wire Trainer for this Experiment
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      `;
+      updateLiveTruthTableHighlight();
+    }
+
+    function recordObservation() {
+      const stateObj = SimEngine.state[activeExpKey] || SimEngine.state.jk;
+      let inputSummary = '';
+      if (activeExpKey === 'sr') inputSummary = `S=${SimEngine.getTerminalValue('SR_S')}, R=${SimEngine.getTerminalValue('SR_R')}`;
+      else if (activeExpKey === 'jk') inputSummary = `J=${SimEngine.getTerminalValue('JK_J')}, K=${SimEngine.getTerminalValue('JK_K')}`;
+      else if (activeExpKey === 'd') inputSummary = `D=${SimEngine.getTerminalValue('D_D')}`;
+      else if (activeExpKey === 't') inputSummary = `T=${SimEngine.getTerminalValue('T_T')}`;
+      else if (activeExpKey === 'msjk') inputSummary = `J=${SimEngine.getTerminalValue('MSJK_J')}, K=${SimEngine.getTerminalValue('MSJK_K')}`;
+
+      const row = {
+        index: observationRows.length + 1,
+        time: new Date().toLocaleTimeString(),
+        exp: activeExpKey.toUpperCase(),
+        inputs: inputSummary,
+        q: stateObj.Q !== undefined ? stateObj.Q : stateObj.slaveQ,
+        q_bar: stateObj.Q_bar !== undefined ? stateObj.Q_bar : stateObj.slaveQ_bar,
+        state: stateObj.stateText
+      };
+
+      observationRows.push(row);
+      SoundFX.playWireSnap();
+      showToast('Observation logged successfully.', 'success');
+
+      const tbody = document.getElementById('obsTableBody');
+      const badge = document.getElementById('obsCountBadge');
+      if (tbody) tbody.innerHTML = renderObservationRows();
+      if (badge) badge.textContent = `${observationRows.length} Logged`;
+    }
+
+    function renderObservationRows() {
+      if (observationRows.length === 0) {
+        return `<tr><td colspan="5" class="p-4 text-center text-slate-500 font-sans">No observations recorded yet. Click "Log Current Output" to capture.</td></tr>`;
+      }
+      return observationRows.map(r => `
+        <tr>
+          <td class="p-2 text-slate-400">${r.index}</td>
+          <td class="p-2 text-cyan-300">${r.inputs}</td>
+          <td class="p-2 text-emerald-400 font-bold">${r.q}</td>
+          <td class="p-2 text-rose-400 font-bold">${r.q_bar}</td>
+          <td class="p-2 text-slate-300">${r.state}</td>
+        </tr>
+      `).join('');
+    }
+
+    function clearObservations() {
+      observationRows = [];
+      const tbody = document.getElementById('obsTableBody');
+      const badge = document.getElementById('obsCountBadge');
+      if (tbody) tbody.innerHTML = renderObservationRows();
+      if (badge) badge.textContent = `0 Logged`;
+      showToast('Observation sheet cleared.', 'info');
+    }
+
+    function exportObservationCSV() {
+      if (observationRows.length === 0) {
+        showToast('No observations to export.', 'warning');
+        return;
+      }
+      let csv = 'Index,Timestamp,Experiment,Inputs,Q_Output,Q_Bar_Output,State_Description\n';
+      observationRows.forEach(r => {
+        csv += `${r.index},"${r.time}","${r.exp}","${r.inputs}",${r.q},${r.q_bar},"${r.state}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `DigiLab_Observations_${activeExpKey.toUpperCase()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('CSV Laboratory Observation Report Exported!', 'success');
+    }
+
+    function updateLiveTruthTableHighlight() {
+      // Find row in current truth table that matches active logic levels
+      const rows = document.querySelectorAll('#liveTruthTable tbody tr');
+      rows.forEach(r => r.classList.remove('bg-emerald-950/70', 'border-l-4', 'border-emerald-400'));
+
+      let activeRowIndex = -1;
+      if (activeExpKey === 'sr') {
+        const s = SimEngine.getTerminalValue('SR_S');
+        const r = SimEngine.getTerminalValue('SR_R');
+        if (s === 0 && r === 0) activeRowIndex = 0;
+        else if (s === 0 && r === 1) activeRowIndex = 1;
+        else if (s === 1 && r === 0) activeRowIndex = 2;
+        else if (s === 1 && r === 1) activeRowIndex = 3;
+      } else if (activeExpKey === 'jk' || activeExpKey === 'msjk') {
+        const j = SimEngine.getTerminalValue(activeExpKey === 'jk' ? 'JK_J' : 'MSJK_J');
+        const k = SimEngine.getTerminalValue(activeExpKey === 'jk' ? 'JK_K' : 'MSJK_K');
+        if (j === 0 && k === 0) activeRowIndex = 0;
+        else if (j === 0 && k === 1) activeRowIndex = 1;
+        else if (j === 1 && k === 0) activeRowIndex = 2;
+        else if (j === 1 && k === 1) activeRowIndex = 3;
+      } else if (activeExpKey === 'd') {
+        const d = SimEngine.getTerminalValue('D_D');
+        activeRowIndex = d === 1 ? 1 : 0;
+      } else if (activeExpKey === 't') {
+        const t = SimEngine.getTerminalValue('T_T');
+        activeRowIndex = t === 1 ? 1 : 0;
+      }
+
+      if (activeRowIndex !== -1) {
+        const rowEl = document.getElementById(`ttRow_${activeRowIndex}`);
+        if (rowEl) {
+          rowEl.classList.add('bg-emerald-950/70', 'border-l-4', 'border-emerald-400');
+        }
+      }
+    }
+
+
+    // --- 7. VIVA VOCE & QUIZ MANAGER ---
+    const QuizManager = {
+      userAnswers: {},
+
+      questions: [
+        {
+          id: 1,
+          q: "What fundamental condition differentiates a Flip-Flop from a Latch?",
+          options: [
+            "A flip-flop uses only NAND gates, whereas a latch uses NOR gates.",
+            "A flip-flop is edge-triggered (transitions only on clock edge), whereas a latch is level-sensitive.",
+            "A latch has complementary outputs Q and Q̅, while a flip-flop does not.",
+            "A flip-flop requires negative DC voltage supply."
+          ],
+          correct: 1,
+          explanation: "Flip-flops are synchronous edge-triggered devices responding strictly during the clock voltage transition (rising or falling edge), whereas latches respond continuously while the enable signal is HIGH."
+        },
+        {
+          id: 2,
+          q: "What causes the 'Race-Around Condition' in a level-triggered JK flip-flop?",
+          options: [
+            "Connecting Preset and Clear simultaneously to ground.",
+            "Setting J=1, K=1 while the clock pulse width tp is greater than the propagation delay tpd.",
+            "Clock frequency dropping below 0.1 Hz.",
+            "Floating high impedance on output Q̅."
+          ],
+          correct: 1,
+          explanation: "When J=1 and K=1, if the clock remains HIGH longer than the flip-flop propagation delay, the output toggles repeatedly and unpredictably before the clock goes LOW."
+        },
+        {
+          id: 3,
+          q: "How does the Master-Slave JK configuration prevent race-around?",
+          options: [
+            "By replacing all internal NAND gates with XOR gates.",
+            "By isolating master sampling on CLK=1 and slave output transfer on the clock falling edge (opposite phases).",
+            "By operating at double the VCC supply voltage.",
+            "By grounding input K during clock transitions."
+          ],
+          correct: 1,
+          explanation: "The master stage is enabled when CLK is HIGH, while the slave stage remains disabled. When CLK transitions to LOW, the inverted clock activates the slave to copy the master state, preventing cyclic toggling."
+        },
+        {
+          id: 4,
+          q: "What is the next state Q(n+1) of a D flip-flop when input D = 1 upon the arrival of a valid clock edge?",
+          options: [
+            "Q(n+1) = 0",
+            "Q(n+1) = Q̅(n)",
+            "Q(n+1) = 1",
+            "Indeterminate / Forbidden state"
+          ],
+          correct: 2,
+          explanation: "The characteristic equation of a D flip-flop is Q(n+1) = D. Hence, whatever binary bit is present at D is latched to Q on the active edge."
+        },
+        {
+          id: 5,
+          q: "What are the active logic levels of Asynchronous PRESET (PRE) and CLEAR (CLR) on standard TTL ICs (e.g. 74LS74, 74LS76)?",
+          options: [
+            "Active-HIGH (1 triggers preset/clear).",
+            "Active-LOW (0 triggers preset/clear, normally held at HIGH / 1).",
+            "Alternating AC level.",
+            "Active only on the clock edge."
+          ],
+          correct: 1,
+          explanation: "Standard TTL flip-flops feature active-LOW PRE and CLR inputs (signified with an overbar PRE̅/CLR̅ or inversion circle). Bringing them LOW immediately forces Q=1 or Q=0, bypassing the clock."
+        }
+      ],
+
+      vivaData: [
+        { q: "What is excitation table of a flip-flop?", a: "An excitation table lists the required input combinations (e.g., S,R or J,K or D) necessary to effect a desired transition from present state Q(n) to next state Q(n+1)." },
+        { q: "Why is S=1, R=1 called an invalid or forbidden state in SR flip-flops?", a: "Because it violates the complementary output condition (Q and Q̅ both become 1 simultaneously). Furthermore, if inputs return to 0 simultaneously, the final state is unpredictable (race condition)." },
+        { q: "How can a JK flip-flop be converted into a T flip-flop?", a: "By tying the J and K inputs together to form a single common input terminal T." },
+        { q: "What is propagation delay in digital electronics?", a: "The time interval between the application of an input signal transition (e.g., clock edge) and the resulting change at the output terminal." },
+        { q: "What is setup time (t_su) and hold time (t_h)?", a: "Setup time is the minimum duration the data input must remain stable BEFORE the active clock edge. Hold time is the minimum duration the data input must remain stable AFTER the clock edge." },
+        { q: "What is a frequency divider circuit?", a: "A cascade of toggle (T or JK with J=K=1) flip-flops where each stage halves the frequency of the preceding clock pulse, yielding divide-by-2, 4, 8, etc." }
+      ],
+
+      init() {
+        this.renderViva();
+        this.renderQuiz();
+      },
+
+      renderViva() {
+        const container = document.getElementById('vivaListContainer');
+        if (!container) return;
+        container.innerHTML = this.vivaData.map((item, idx) => `
+          <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
+            <span class="text-xs font-mono font-bold text-purple-400">Q${idx + 1}. ${item.q}</span>
+            <p class="text-xs text-slate-300 leading-relaxed">${item.a}</p>
+          </div>
+        `).join('');
+      },
+
+      renderQuiz() {
+        const container = document.getElementById('quizContainer');
+        if (!container) return;
+        container.innerHTML = this.questions.map((q, qIdx) => `
+          <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800/80">
+            <span class="text-xs font-bold text-slate-200">${qIdx + 1}. ${q.q}</span>
+            <div class="space-y-2">
+              ${q.options.map((opt, oIdx) => `
+                <label class="flex items-start space-x-3 text-xs text-slate-300 p-2.5 rounded-lg bg-slate-900/60 hover:bg-slate-900 cursor-pointer transition border border-transparent hover:border-slate-700">
+                  <input type="radio" name="quiz_${q.id}" value="${oIdx}" onchange="QuizManager.selectOption(${q.id}, ${oIdx})" class="mt-0.5 text-emerald-500 focus:ring-emerald-400">
+                  <span>${opt}</span>
+                </label>
+              `).join('')}
+            </div>
+            <div id="quizFeedback_${q.id}" class="text-xs font-mono hidden pt-1"></div>
+          </div>
+        `).join('');
+      },
+
+      selectOption(qId, optionIdx) {
+        this.userAnswers[qId] = optionIdx;
+      },
+
+      submitQuiz() {
+        let score = 0;
+        this.questions.forEach(q => {
+          const userChoice = this.userAnswers[q.id];
+          const feedbackEl = document.getElementById(`quizFeedback_${q.id}`);
+          if (!feedbackEl) return;
+          feedbackEl.classList.remove('hidden');
+
+          if (userChoice === q.correct) {
+            score++;
+            feedbackEl.className = 'text-xs font-mono text-emerald-400 p-2 rounded bg-emerald-950/60 border border-emerald-800/40';
+            feedbackEl.innerHTML = `✓ Correct! ${q.explanation}`;
+          } else {
+            feedbackEl.className = 'text-xs font-mono text-rose-400 p-2 rounded bg-rose-950/60 border border-rose-800/40';
+            feedbackEl.innerHTML = `✗ Incorrect. Correct: "${q.options[q.correct]}". ${q.explanation}`;
+          }
+        });
+
+        const scoreText = document.getElementById('quizScoreText');
+        if (scoreText) {
+          scoreText.textContent = `${score} / ${this.questions.length}`;
+        }
+        SoundFX.playWireSnap();
+        showToast(`Quiz completed! Score: ${score}/${this.questions.length}`, score >= 4 ? 'success' : 'info');
+      },
+
+      resetQuiz() {
+        this.userAnswers = {};
+        this.renderQuiz();
+        const scoreText = document.getElementById('quizScoreText');
+        if (scoreText) scoreText.textContent = `0 / ${this.questions.length}`;
+        showToast('Quiz reset.', 'info');
+      }
+    };
+
+
+    // --- 8. STORAGE & PRESET MANAGER ---
+    const StorageManager = {
+      storageKey: 'digilab_saved_circuits',
+
+      getSavedCircuits() {
+        try {
+          return JSON.parse(localStorage.getItem(this.storageKey)) || [];
+        } catch(e) {
+          return [];
+        }
+      },
+
+      saveCurrentCircuit() {
+        const nameInput = document.getElementById('saveCircuitName');
+        const name = (nameInput && nameInput.value.trim()) || `Circuit_${new Date().toLocaleDateString()}`;
+
+        const circuitData = {
+          id: 'cir_' + Date.now(),
+          name,
+          date: new Date().toLocaleString(),
+          wires: WireManager.wires,
+          switches: SimEngine.switches,
+          activeExp: activeExpKey
+        };
+
+        const existing = this.getSavedCircuits();
+        existing.push(circuitData);
+        localStorage.setItem(this.storageKey, JSON.stringify(existing));
+        if (nameInput) nameInput.value = '';
+
+        this.renderSavedList();
+        SoundFX.playWireSnap();
+        showToast(`Circuit "${name}" saved to local storage!`, 'success');
+      },
+
+      loadCircuit(id) {
+        const list = this.getSavedCircuits();
+        const found = list.find(c => c.id === id);
+        if (!found) return;
+
+        WireManager.wires = found.wires || [];
+        SimEngine.switches = found.switches || { 1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0 };
+        SimEngine.updateSwitchUI();
+        WireManager.redrawAllWires();
+        SimEngine.evaluateCircuit();
+        SoundFX.playWireSnap();
+        showToast(`Loaded circuit preset "${found.name}"`, 'info');
+        switchView('trainer');
+      },
+
+      deleteCircuit(id) {
+        const list = this.getSavedCircuits().filter(c => c.id !== id);
+        localStorage.setItem(this.storageKey, JSON.stringify(list));
+        this.renderSavedList();
+        showToast('Preset deleted.', 'info');
+      },
+
+      renderSavedList() {
+        const container = document.getElementById('savedCircuitsList');
+        if (!container) return;
+        const list = this.getSavedCircuits();
+        if (list.length === 0) {
+          container.innerHTML = `<div class="text-xs text-slate-500 font-sans p-2">No saved circuits yet.</div>`;
+          return;
+        }
+
+        container.innerHTML = list.map(c => `
+          <div class="flex items-center justify-between p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-xs">
+            <div>
+              <span class="font-bold text-slate-200 block">${c.name}</span>
+              <span class="text-[10px] text-slate-400 font-mono">${c.wires.length} Wires • ${c.date}</span>
+            </div>
+            <div class="flex items-center space-x-1">
+              <button onclick="StorageManager.loadCircuit('${c.id}')" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white font-semibold">Load</button>
+              <button onclick="StorageManager.deleteCircuit('${c.id}')" class="p-1 rounded bg-slate-800 hover:bg-rose-900 text-slate-400 hover:text-rose-300">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+        `).join('');
+      },
+
+      exportToJSON() {
+        const data = {
+          circuits: this.getSavedCircuits(),
+          observations: observationRows,
+          timestamp: new Date().toISOString()
+        };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `DigiLab_Backup_${Date.now()}.json`;
+        a.click();
+        showToast('Laboratory backup exported successfully.', 'success');
+      },
+
+      importFromJSON(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const parsed = JSON.parse(e.target.result);
+            if (parsed.circuits) {
+              localStorage.setItem(this.storageKey, JSON.stringify(parsed.circuits));
+              this.renderSavedList();
+              showToast('Backup restored successfully!', 'success');
+            }
+          } catch(err) {
+            showToast('Invalid backup file JSON', 'error');
+          }
+        };
+        reader.readAsText(file);
+      },
+
+      resetAllData() {
+        localStorage.removeItem(this.storageKey);
+        this.renderSavedList();
+        clearObservations();
+        WireManager.clearAllWires();
+        showToast('All laboratory records reset to factory defaults.', 'info');
+      }
+    };
+
+
+    // --- 9. AUTO-WIRE PRESET DEMO GENERATOR ---
+    function quickAutoWireDemo(expType) {
+      WireManager.clearAllWires();
+      setFlipFlopTab(expType);
+
+      // Predefined authentic wiring layouts
+      if (expType === 'jk') {
+        WireManager.wires = [
+          { id: 'w1', fromId: 'SW_OUT_1', toId: 'JK_J', color: '#3b82f6' },      // SW1 -> J
+          { id: 'w2', fromId: 'SW_OUT_2', toId: 'JK_K', color: '#3b82f6' },      // SW2 -> K
+          { id: 'w3', fromId: 'CLK_OUT',  toId: 'JK_CLK', color: '#facc15' },    // CLK -> CLK
+          { id: 'w4', fromId: 'PWR_VCC',  toId: 'JK_PRE', color: '#ef4444' },    // VCC -> PRE (inactive high)
+          { id: 'w5', fromId: 'PWR_VCC',  toId: 'JK_CLR', color: '#ef4444' },    // VCC -> CLR (inactive high)
+          { id: 'w6', fromId: 'JK_Q',     toId: 'LED_IN_1', color: '#10b981' },  // Q -> L1
+          { id: 'w7', fromId: 'JK_Q_BAR', toId: 'LED_IN_2', color: '#f97316' }   // Q̅ -> L2
+        ];
+        document.getElementById('activePresetBadge').textContent = 'JK Flip-Flop Setup';
+      } else if (expType === 'd') {
+        WireManager.wires = [
+          { id: 'w1', fromId: 'SW_OUT_1', toId: 'D_D', color: '#3b82f6' },
+          { id: 'w2', fromId: 'CLK_OUT',  toId: 'D_CLK', color: '#facc15' },
+          { id: 'w3', fromId: 'PWR_VCC',  toId: 'D_PRE', color: '#ef4444' },
+          { id: 'w4', fromId: 'PWR_VCC',  toId: 'D_CLR', color: '#ef4444' },
+          { id: 'w5', fromId: 'D_Q',      toId: 'LED_IN_1', color: '#10b981' },
+          { id: 'w6', fromId: 'D_Q_BAR',  toId: 'LED_IN_2', color: '#f97316' }
+        ];
+        document.getElementById('activePresetBadge').textContent = 'D Flip-Flop Setup';
+      } else if (expType === 'sr') {
+        WireManager.wires = [
+          { id: 'w1', fromId: 'SW_OUT_1', toId: 'SR_S', color: '#3b82f6' },
+          { id: 'w2', fromId: 'SW_OUT_2', toId: 'SR_R', color: '#3b82f6' },
+          { id: 'w3', fromId: 'CLK_OUT',  toId: 'SR_CLK', color: '#facc15' },
+          { id: 'w4', fromId: 'SR_Q',     toId: 'LED_IN_1', color: '#10b981' },
+          { id: 'w5', fromId: 'SR_Q_BAR', toId: 'LED_IN_2', color: '#f97316' }
+        ];
+        document.getElementById('activePresetBadge').textContent = 'SR Flip-Flop Setup';
+      } else if (expType === 't') {
+        WireManager.wires = [
+          { id: 'w1', fromId: 'SW_OUT_1', toId: 'T_T', color: '#3b82f6' },
+          { id: 'w2', fromId: 'CLK_OUT',  toId: 'T_CLK', color: '#facc15' },
+          { id: 'w3', fromId: 'PWR_VCC',  toId: 'T_PRE', color: '#ef4444' },
+          { id: 'w4', fromId: 'PWR_VCC',  toId: 'T_CLR', color: '#ef4444' },
+          { id: 'w5', fromId: 'T_Q',      toId: 'LED_IN_1', color: '#10b981' },
+          { id: 'w6', fromId: 'T_Q_BAR',  toId: 'LED_IN_2', color: '#f97316' }
+        ];
+        document.getElementById('activePresetBadge').textContent = 'T Flip-Flop Setup';
+      } else if (expType === 'msjk') {
+        WireManager.wires = [
+          { id: 'w1', fromId: 'SW_OUT_1',  toId: 'MSJK_J', color: '#3b82f6' },
+          { id: 'w2', fromId: 'SW_OUT_2',  toId: 'MSJK_K', color: '#3b82f6' },
+          { id: 'w3', fromId: 'CLK_OUT',   toId: 'MSJK_CLK', color: '#facc15' },
+          { id: 'w4', fromId: 'PWR_VCC',   toId: 'MSJK_PRE', color: '#ef4444' },
+          { id: 'w5', fromId: 'PWR_VCC',   toId: 'MSJK_CLR', color: '#ef4444' },
+          { id: 'w6', fromId: 'MSJK_Q',    toId: 'LED_IN_1', color: '#10b981' },
+          { id: 'w7', fromId: 'MSJK_Q_BAR',toId: 'LED_IN_2', color: '#f97316' }
+        ];
+        document.getElementById('activePresetBadge').textContent = 'Master-Slave JK Setup';
+      }
+
+      SoundFX.playWireSnap();
+      switchView('trainer');
+      setTimeout(() => {
+        WireManager.redrawAllWires();
+        SimEngine.evaluateCircuit();
+        showToast(`Auto-Wired ${expType.toUpperCase()} circuit on trainer kit!`, 'success');
+      }, 50);
+    }
+
+    function handleAutoWireSelect(val) {
+      if (!val) return;
+      quickAutoWireDemo(val);
+      document.getElementById('autoWireSelect').value = '';
+    }
+
+    function setFlipFlopTab(tab) {
+      document.querySelectorAll('.ff-tab-btn').forEach(b => {
+        b.className = 'ff-tab-btn px-2.5 py-1 text-xs font-mono font-bold rounded bg-slate-800 text-slate-400 hover:text-white';
+      });
+      const activeBtn = document.getElementById(`tabBtn_${tab}`);
+      if (activeBtn) {
+        activeBtn.className = 'ff-tab-btn px-2.5 py-1 text-xs font-mono font-bold rounded bg-emerald-700 text-white';
+      }
+
+      document.querySelectorAll('.ff-module-view').forEach(v => v.classList.add('hidden'));
+      const activeView = document.getElementById(`module_${tab}`);
+      if (activeView) activeView.classList.remove('hidden');
+
+      setTimeout(() => WireManager.redrawAllWires(), 20);
+    }
+
+    function loadExperiment(expKey) {
+      renderExperiment(expKey);
+      switchView('experiments');
+    }
+
+
+    // --- 10. UI VIEW SWITCHER & APP CONTROLLER ---
+    function switchView(viewName) {
+      const views = ['dashboard', 'trainer', 'breadboard', 'experiments', 'timing', 'viva', 'settings'];
+      views.forEach(v => {
+        const el = document.getElementById(`view-${v}`);
+        if (el) el.classList.toggle('hidden', v !== viewName);
+      });
+
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        const target = tab.getAttribute('data-view');
+        if (target === viewName) {
+          tab.className = 'nav-tab active flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 whitespace-nowrap transition';
+        } else {
+          tab.className = 'nav-tab flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 whitespace-nowrap transition';
+        }
+      });
+
+      if (viewName === 'trainer') {
+        setTimeout(() => WireManager.redrawAllWires(), 30);
+      }
+      if (viewName === 'timing') {
+        setTimeout(() => TimingAnalyzer.resize(), 30);
+      }
+      if (viewName === 'experiments') {
+        renderExperiment(activeExpKey);
+      }
+    }
+
+    function applyBoardTheme(themeName) {
+      const board = document.getElementById('trainerBoard');
+      if (!board) return;
+      if (themeName === 'pcb-green') {
+        board.style.backgroundColor = '#0a3524';
+      } else if (themeName === 'pcb-blue') {
+        board.style.backgroundColor = '#0c2340';
+      } else if (themeName === 'pcb-black') {
+        board.style.backgroundColor = '#18181b';
+      }
+      showToast(`Applied ${themeName} theme`, 'info');
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      let bg = 'bg-slate-900 border-slate-700 text-white';
+      if (type === 'success') bg = 'bg-emerald-950 border-emerald-600 text-emerald-200';
+      if (type === 'warning') bg = 'bg-amber-950 border-amber-600 text-amber-200';
+      if (type === 'error') bg = 'bg-rose-950 border-rose-600 text-rose-200';
+
+      toast.className = `${bg} px-4 py-2.5 rounded-xl border shadow-2xl text-xs font-medium pointer-events-auto transform transition-all duration-300 opacity-0 translate-y-2 flex items-center space-x-2`;
+      toast.innerHTML = `
+        <span class="w-2 h-2 rounded-full ${type === 'success' ? 'bg-emerald-400' : type === 'error' ? 'bg-rose-400' : 'bg-cyan-400'}"></span>
+        <span>${msg}</span>
+      `;
+
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.remove('opacity-0', 'translate-y-2');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+
+    // --- 11. INLINE SERVICE WORKER (OFFLINE PWA ARCHITECTURE) ---
+    function registerOfflineServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        const swScript = `
+          const CACHE_NAME = 'digilab-cache-v2';
+          self.addEventListener('install', (e) => {
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (e) => {
+            e.waitUntil(clients.claim());
+          });
+          self.addEventListener('fetch', (e) => {
+            e.respondWith(
+              caches.match(e.request).then(cached => cached || fetch(e.request).catch(() => cached))
+            );
+          });
+        `;
+        const blob = new Blob([swScript], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(swUrl).catch(() => {});
+      }
+    }
+
+
+    // --- 12. WINDOW ONLOAD INITIALIZATION ---
+    window.onload = function () {
+      // Setup Navigation Tabs
+      document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const view = tab.getAttribute('data-view');
+          switchView(view);
+        });
+      });
+
+      // Master Toolbar Events
+      document.getElementById('masterPowerBtn').addEventListener('click', () => SimEngine.togglePower());
+      document.getElementById('soundToggleBtn').addEventListener('click', () => SoundFX.toggle());
+      document.getElementById('undoWireBtn').addEventListener('click', () => WireManager.undo());
+      document.getElementById('clearWiresBtn').addEventListener('click', () => WireManager.clearAllWires());
+
+      // Pulser & Clock Generator Events
+      document.getElementById('manualClockBtn').addEventListener('click', () => SimEngine.pulseClock());
+      document.getElementById('autoClockToggleBtn').addEventListener('click', () => SimEngine.toggleAutoClock());
+      document.getElementById('clockFreqSelect').addEventListener('change', (e) => {
+        SimEngine.clockFreq = parseFloat(e.target.value);
+        if (SimEngine.autoClockRunning) {
+          SimEngine.toggleAutoClock();
+          SimEngine.toggleAutoClock();
+        }
+      });
+
+      // Keyboard Shortcuts (Ctrl+Z for undo, Space for manual clock pulse)
+      window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+          e.preventDefault();
+          WireManager.undo();
+        }
+        if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+          e.preventDefault();
+          SimEngine.pulseClock();
+        }
+      });
+
+      // Initialize all subsystems
+      SimEngine.init();
+      WireManager.init();
+      TimingAnalyzer.init();
+      QuizManager.init();
+      StorageManager.renderSavedList();
+      registerOfflineServiceWorker();
+
+      // Default initial view
+      switchView('dashboard');
+    };
+  </script>
+</body>
+</html>
